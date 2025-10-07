@@ -1,0 +1,26 @@
+{
+  "default_work_title": "Work",
+  "default_home_title": "Home",
+  "calendars": [
+    {
+      "id": "E198547B-614F-4109-B61A-96C56D4DED8A",
+      "title": "Home",
+      "writable": true
+    },
+    {
+      "id": "3CAFCE49-B7E6-4643-957A-5D2C095ABDCC",
+      "title": "Birthdays",
+      "writable": false
+    },
+    {
+      "id": "BB8C7E8D-EA0D-43BC-B670-5940F97624F2",
+      "title": "US Holidays",
+      "writable": false
+    },
+    {
+      "id": "20E9D11E-48F8-46E7-9CDB-73B49C70FD41",
+      "title": "Work",
+      "writable": true
+    }
+  ]
+}
