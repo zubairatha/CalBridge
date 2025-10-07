@@ -21,14 +21,25 @@ python -m pip install --upgrade pip
 Install deps:
 
 ```bash
+# Core CalBridge dependencies
 pip install pyobjc fastapi uvicorn py2app pydantic anyio sniffio h11
+
+# Additional dependencies for helper scripts
+pip install requests python-dateutil
 ```
 
-Project files (minimal):
+Project files:
 
 ```
-helper_app.py    # FastAPI + EventKit
-setup.py         # py2app config
+helper_app.py           # FastAPI + EventKit
+setup.py               # py2app config
+scripts/               # Helper command-line tools
+├── cache_calendars.py # Cache calendar info
+├── create_event.py    # Create single event
+├── list_events.py     # List/filter events
+└── nl_to_event.py     # AI natural language → event
+config/
+└── calendars.json     # Cached calendar data
 ```
 
 ---
@@ -283,6 +294,101 @@ Make sure your `.venv` is active before building/running.
 
 ---
 
-## 9) Safety / Idempotency Tip
+## 9) Helper Scripts
+
+The `scripts/` directory contains convenient command-line tools for common calendar operations:
+
+### A) `scripts/cache_calendars.py`
+
+Caches calendar information to `config/calendars.json` for use by other scripts.
+
+```bash
+python scripts/cache_calendars.py
+```
+
+**Output:** Creates/updates `config/calendars.json` with calendar IDs and titles.
+
+### B) `scripts/create_event.py`
+
+Create a single calendar event via command line.
+
+```bash
+python scripts/create_event.py \
+  --title "Meeting with team" \
+  --start "2025-01-15T14:00" \
+  --duration-min 30 \
+  --calendar-title "Work" \
+  --notes "Quarterly planning"
+```
+
+**Arguments:**
+- `--title` (required): Event title
+- `--start` (required): Start time in `YYYY-MM-DDTHH:MM` format (local time)
+- `--duration-min` (required): Duration in minutes
+- `--calendar-id` (optional): Calendar ID (preferred)
+- `--calendar-title` (optional): Calendar title (fallback)
+- `--notes` (optional): Event notes
+
+### C) `scripts/list_events.py`
+
+List upcoming events with filtering options.
+
+```bash
+# List next 7 days of events
+python scripts/list_events.py
+
+# List next 3 days from Work calendar
+python scripts/list_events.py --days 3 --calendar-title "Work"
+
+# List next 14 days excluding holidays
+python scripts/list_events.py --days 14 --exclude-holidays
+```
+
+**Arguments:**
+- `--days` (default: 7): Number of days to look ahead
+- `--calendar-title`: Filter by calendar title
+- `--calendar-id`: Filter by calendar ID
+- `--exclude-holidays`: Skip holiday events
+
+### D) `scripts/nl_to_event.py`
+
+**AI-powered natural language to calendar event converter** using Ollama.
+
+**Prerequisites:**
+- Ollama installed and running locally
+- A compatible model (default: `gemma3`)
+- Calendar cache created (`scripts/cache_calendars.py`)
+
+```bash
+# Basic usage
+python scripts/nl_to_event.py "Create a meeting tomorrow at 2pm for 1 hour with the design team"
+
+# Work calendar event
+python scripts/nl_to_event.py "Schedule a Work call next Friday at 10am for 45 minutes"
+
+# Home calendar event
+python scripts/nl_to_event.py "Add Home event for Oct 10, 2025 call with my uncle for 30 minutes"
+```
+
+**Environment Variables:**
+- `OLLAMA_BASE` (default: `http://127.0.0.1:11434`): Ollama server URL
+- `OLLAMA_MODEL` (default: `gemma3`): Model to use
+- `TIMEZONE` (default: `America/New_York`): Your timezone
+- `CALBRIDGE_BASE` (default: `http://127.0.0.1:8765`): CalBridge API URL
+
+**Natural Language Examples:**
+- "tomorrow at 2pm for 1 hour" → Creates event tomorrow at 2 PM for 60 minutes
+- "next Friday morning" → Creates event next Friday at 9 AM for 30 minutes
+- "call with John in 2 days at 3:30pm for 45 minutes" → Creates event in 2 days
+- "this afternoon" → Creates event today at 3 PM for 30 minutes
+
+**Dependencies for scripts:**
+```bash
+pip install requests python-dateutil
+```
+
+---
+
+## 10) Safety / Idempotency Tip
 
 When creating events, include your own identifiers in `notes` (e.g., `t:task_123 s:sub_a v:1`). If anything gets out of sync, you can reconcile by listing `/events` and matching those tokens.
