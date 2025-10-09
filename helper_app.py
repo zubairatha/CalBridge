@@ -187,6 +187,157 @@ def delete(event_id: str):
         return {"deleted": True}
     return {"deleted": False}
 
+@app.post("/add-batch")
+def add_batch(events: List[EventIn]):
+    """Create multiple events atomically."""
+    created_events = []
+    failed_events = []
+    
+    for event_data in events:
+        try:
+            start = datetime.fromisoformat(event_data.start_iso)
+            end = datetime.fromisoformat(event_data.end_iso)
+            
+            cal = resolve_calendar_or_error(event_data.calendar_id, event_data.calendar_title)
+            
+            e = EKEvent.eventWithEventStore_(store)
+            e.setTitle_(event_data.title)
+            e.setStartDate_(nsdate(start))
+            e.setEndDate_(nsdate(end))
+            if event_data.notes:
+                e.setNotes_(event_data.notes)
+            e.setCalendar_(cal)
+            store.saveEvent_span_error_(e, 0, None)
+            
+            created_events.append(EventOut(
+                title=event_data.title,
+                start_iso=start.isoformat(),
+                end_iso=end.isoformat(),
+                id=str(e.eventIdentifier()),
+                calendar=str(cal.title() or "")
+            ))
+        except Exception as e:
+            failed_events.append({"event": event_data.dict(), "error": str(e)})
+    
+    if failed_events:
+        # Clean up successful events
+        for event in created_events:
+            try:
+                ev = store.eventWithIdentifier_(event.id)
+                if ev:
+                    store.removeEvent_span_error_(ev, 0, None)
+            except:
+                pass
+        raise HTTPException(status_code=400, detail=f"Batch creation failed: {failed_events}")
+    
+    return {"created": created_events, "count": len(created_events)}
+
+@app.post("/delete-batch")
+def delete_batch(event_ids: List[str]):
+    """Delete multiple events."""
+    results = {"deleted": [], "failed": []}
+    
+    for event_id in event_ids:
+        try:
+            ev = store.eventWithIdentifier_(event_id)
+            if ev:
+                store.removeEvent_span_error_(ev, 0, None)
+                results["deleted"].append(event_id)
+            else:
+                results["failed"].append({"id": event_id, "error": "Event not found"})
+        except Exception as e:
+            results["failed"].append({"id": event_id, "error": str(e)})
+    
+    return results
+
+@app.put("/update")
+def update_event(event_id: str, event_data: EventIn):
+    """Update an existing event."""
+    ev = store.eventWithIdentifier_(event_id)
+    if not ev:
+        raise HTTPException(status_code=404, detail="Event not found")
+    
+    try:
+        start = datetime.fromisoformat(event_data.start_iso)
+        end = datetime.fromisoformat(event_data.end_iso)
+        
+        cal = resolve_calendar_or_error(event_data.calendar_id, event_data.calendar_title)
+        
+        ev.setTitle_(event_data.title)
+        ev.setStartDate_(nsdate(start))
+        ev.setEndDate_(nsdate(end))
+        if event_data.notes:
+            ev.setNotes_(event_data.notes)
+        ev.setCalendar_(cal)
+        store.saveEvent_span_error_(ev, 0, None)
+        
+        return EventOut(
+            title=event_data.title,
+            start_iso=start.isoformat(),
+            end_iso=end.isoformat(),
+            id=str(ev.eventIdentifier()),
+            calendar=str(cal.title() or "")
+        )
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Failed to update event: {e}")
+
+@app.get("/free-slots")
+def get_free_slots(start: str, end: str, duration_minutes: int, calendar_id: str = None, calendar_title: str = None):
+    """Find available time slots in calendar."""
+    try:
+        start_dt = datetime.fromisoformat(start)
+        end_dt = datetime.fromisoformat(end)
+        
+        # Get events in the time range
+        days = (end_dt - start_dt).days + 1
+        pred = store.predicateForEventsWithStartDate_endDate_calendars_(nsdate(start_dt), nsdate(end_dt), None)
+        evs = sorted(store.eventsMatchingPredicate_(pred) or [], key=lambda e: e.startDate())
+        
+        # Filter by calendar if specified
+        if calendar_id or calendar_title:
+            cal = resolve_calendar_or_error(calendar_id, calendar_title)
+            evs = [e for e in evs if e.calendar().calendarIdentifier() == cal.calendarIdentifier()]
+        
+        # Find gaps
+        free_slots = []
+        current_time = start_dt
+        
+        for e in evs:
+            event_start = datetime.fromtimestamp(e.startDate().timeIntervalSince1970(), tz=timezone.utc).astimezone()
+            event_end = datetime.fromtimestamp(e.endDate().timeIntervalSince1970(), tz=timezone.utc).astimezone()
+            
+            # Check if there's a gap before this event
+            if current_time < event_start:
+                gap_duration = (event_start - current_time).total_seconds() / 60
+                if gap_duration >= duration_minutes:
+                    free_slots.append({
+                        "start": current_time.isoformat(),
+                        "end": event_start.isoformat(),
+                        "duration_minutes": int(gap_duration),
+                        "score": 1.0,
+                        "reason": "Available gap between events"
+                    })
+            
+            # Move current time to end of this event
+            current_time = max(current_time, event_end)
+        
+        # Check for gap after last event
+        if current_time < end_dt:
+            gap_duration = (end_dt - current_time).total_seconds() / 60
+            if gap_duration >= duration_minutes:
+                free_slots.append({
+                    "start": current_time.isoformat(),
+                    "end": end_dt.isoformat(),
+                    "duration_minutes": int(gap_duration),
+                    "score": 1.0,
+                    "reason": "Available time after last event"
+                })
+        
+        return free_slots
+        
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Failed to find free slots: {e}")
+
 def run_server():
     uvicorn.run(app, host="127.0.0.1", port=8765, log_level="info")
 

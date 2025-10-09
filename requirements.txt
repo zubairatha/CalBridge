@@ -1,0 +1,19 @@
+# Core CalBridge dependencies
+pyobjc
+fastapi
+uvicorn
+py2app
+pydantic
+anyio
+sniffio
+h11
+
+# Additional dependencies for helper scripts
+requests
+python-dateutil
+
+# Smart Planner dependencies
+sqlalchemy
+aiosqlite
+python-multipart
+PyPDF2

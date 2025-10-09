@@ -1,0 +1,435 @@
+.calendar-modal {
+  width: 100%;
+  max-width: 1200px;
+  height: 90vh;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem;
+  border-bottom: 1px solid #e2e8f0;
+  background: #f8fafc;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.header-left h2 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.view-toggle {
+  display: flex;
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.375rem;
+  overflow: hidden;
+}
+
+.toggle-button {
+  padding: 0.5rem 1rem;
+  background: none;
+  border: none;
+  color: #64748b;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.toggle-button:hover {
+  background: #f1f5f9;
+  color: #374151;
+}
+
+.toggle-button.active {
+  background: #3b82f6;
+  color: white;
+}
+
+.header-center {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.header-center h3 {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #1e293b;
+  min-width: 200px;
+  text-align: center;
+}
+
+.nav-button {
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.375rem;
+  padding: 0.5rem;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.nav-button:hover {
+  background: #f1f5f9;
+  color: #374151;
+}
+
+.close-button {
+  background: none;
+  border: none;
+  color: #64748b;
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 0.375rem;
+  transition: all 0.2s;
+}
+
+.close-button:hover {
+  background: #f1f5f9;
+  color: #374151;
+}
+
+.calendar-body {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Week View */
+.week-view {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.week-header {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  background: #f8fafc;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.day-header {
+  padding: 1rem;
+  text-align: center;
+  border-right: 1px solid #e2e8f0;
+}
+
+.day-header:last-child {
+  border-right: none;
+}
+
+.day-name {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.25rem;
+}
+
+.day-number {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #1e293b;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  margin: 0 auto;
+}
+
+.day-number.today {
+  background: #3b82f6;
+  color: white;
+}
+
+.week-grid {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  overflow: hidden;
+}
+
+.day-column {
+  border-right: 1px solid #e2e8f0;
+  overflow-y: auto;
+}
+
+.day-column:last-child {
+  border-right: none;
+}
+
+.day-content {
+  padding: 0.5rem;
+  min-height: 100%;
+}
+
+.task-card {
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.5rem;
+  padding: 0.75rem;
+  margin-bottom: 0.5rem;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.task-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #1e293b;
+  margin-bottom: 0.5rem;
+}
+
+.subtask-item {
+  background: #f8fafc;
+  border-left: 3px solid #3b82f6;
+  border-radius: 0.25rem;
+  padding: 0.5rem;
+  margin-bottom: 0.25rem;
+  font-size: 0.75rem;
+}
+
+.subtask-time {
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 0.125rem;
+}
+
+.subtask-title {
+  color: #1e293b;
+  margin-bottom: 0.125rem;
+}
+
+.subtask-duration {
+  color: #64748b;
+  font-size: 0.625rem;
+}
+
+/* Month View */
+.month-view {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.month-header {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  background: #f8fafc;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.month-day-header {
+  padding: 1rem 0.5rem;
+  text-align: center;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.month-grid {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  grid-template-rows: repeat(6, 1fr);
+  overflow: hidden;
+}
+
+.month-day {
+  border-right: 1px solid #e2e8f0;
+  border-bottom: 1px solid #e2e8f0;
+  padding: 0.5rem;
+  overflow: hidden;
+  background: white;
+}
+
+.month-day.other-month {
+  background: #f8fafc;
+  color: #94a3b8;
+}
+
+.month-day.today {
+  background: #eff6ff;
+}
+
+.month-day.today .day-number {
+  background: #3b82f6;
+  color: white;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+}
+
+.day-number {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #374151;
+  margin-bottom: 0.25rem;
+}
+
+.day-tasks {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.month-task {
+  background: #3b82f6;
+  color: white;
+  padding: 0.125rem 0.25rem;
+  border-radius: 0.125rem;
+  font-size: 0.625rem;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.more-tasks {
+  font-size: 0.625rem;
+  color: #64748b;
+  font-style: italic;
+}
+
+.calendar-footer {
+  padding: 1rem 1.5rem;
+  border-top: 1px solid #e2e8f0;
+  background: #f8fafc;
+}
+
+.legend {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
+.legend-color {
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+}
+
+.loading {
+  text-align: center;
+  padding: 2rem;
+  color: #64748b;
+}
+
+/* Scrollbar styling */
+.day-column::-webkit-scrollbar {
+  width: 4px;
+}
+
+.day-column::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.day-column::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 2px;
+}
+
+.day-column::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Responsive design */
+@media (max-width: 1024px) {
+  .calendar-modal {
+    height: 95vh;
+  }
+  
+  .header-center h3 {
+    min-width: 150px;
+    font-size: 1rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .modal-header {
+    flex-direction: column;
+    gap: 1rem;
+    align-items: stretch;
+  }
+  
+  .header-left {
+    justify-content: center;
+  }
+  
+  .header-center {
+    justify-content: center;
+  }
+  
+  .week-header, .month-header {
+    font-size: 0.75rem;
+  }
+  
+  .day-header, .month-day-header {
+    padding: 0.5rem 0.25rem;
+  }
+  
+  .task-card {
+    padding: 0.5rem;
+  }
+  
+  .subtask-item {
+    padding: 0.375rem;
+  }
+  
+  .legend {
+    gap: 0.5rem;
+  }
+  
+  .legend-item {
+    font-size: 0.625rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .view-toggle {
+    width: 100%;
+  }
+  
+  .toggle-button {
+    flex: 1;
+  }
+  
+  .week-grid, .month-grid {
+    font-size: 0.75rem;
+  }
+  
+  .month-task {
+    font-size: 0.5rem;
+    padding: 0.125rem;
+  }
+}
