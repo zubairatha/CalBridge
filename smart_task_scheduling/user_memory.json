@@ -1,0 +1,42 @@
+[
+  {
+    "title": "Gym Schedule",
+    "description": "Gym workout time is 1-2 PM",
+    "tags": "gym, workout, schedule, 1pm, 2pm"
+  },
+  {
+    "title": "Weekly Capstone Meeting",
+    "description": "Weekly capstone meeting Monday through Friday",
+    "tags": "meeting, capstone, weekly, monday, tuesday, wednesday, thursday, friday"
+  },
+  {
+    "title": "University Work Preference",
+    "description": "Prefer university work early mornings",
+    "tags": "university, uni, work, early, morning, preference"
+  },
+  {
+    "title": "Side Projects Preference",
+    "description": "Prefer side projects in the late evenings",
+    "tags": "side, projects, late, evening, preference"
+  },
+  {
+    "title": "Wake Up Time",
+    "description": "Wake up at 6 AM",
+    "tags": "wake, up, 6am, schedule"
+  },
+  {
+    "title": "Sleep Time",
+    "description": "Sleep at 11 PM",
+    "tags": "sleep, 11pm, schedule"
+  },
+  {
+    "title": "Coffee Break",
+    "description": "Take coffee break at 10:30 AM",
+    "tags": "coffee, break, 10:30am, daily"
+  },
+  {
+    "title": "Lunch Break",
+    "description": "Take lunch break at 12:00 PM",
+    "tags": "lunch, break, 12pm, daily"
+  }
+]

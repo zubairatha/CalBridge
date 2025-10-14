@@ -1,0 +1,57 @@
+LLM here must be ollama llama3
+1. create user memory - in json format. stuff like: preferences: 1. gym 1-2 pm, 2. weekly capstone meeting: monday through friday. 3. prefer uni work early mornings, side projects in the late evenings. 4. wake up at 6, sleep at 11. these can be used to understand existing slots or relevant memory.
+
+2. create smart LLM decomposer (can be multiple steps using Langgraph/Langchain) which takes the task, along with the deadline and smartly decides 
+- which calendar to add the event to 
+- break the event down into 1-10 subtasks based on the task difficulty.
+
+3. time allotment (LLM - again use langgraph/langchain if multiple steps needed)
+- extract free time slots from the calendar (holidays dont count as busy - so always exclude [snippet on how to do this below]), basically list events and then whatever time slots are free apart from those till the deadline can act as free slots.
+- extact preferences from the memory 
+- pass BOTH to the LLM and assign each task (or subtasks) with a time slot - this must be done smartly with a good prompt.
+- schedule nothing before 6AM or after 11PM unless specifically asked to do so.
+
+small snippet to list events without holidays:
+```
+list next 30 days excluding holidays
+import requests
+from datetime import datetime
+
+BASE = "http://127.0.0.1:8765"
+
+events_30 = requests.get(f"{BASE}/events", params={"days": 30}, timeout=20).json()
+
+def is_holiday(e):
+    return "holiday" in (e.get("calendar") or "").lower()
+
+filtered = [e for e in events_30 if not is_holiday(e)]
+
+print(f"Found {len(filtered)} non-holiday events in next 30 days\n")
+print(f"{'Start':<20} {'End':<20} {'Calendar':<14} Title")
+print("-"*90)
+for e in sorted(filtered, key=lambda x: x["start_iso"]):
+    s = datetime.fromisoformat(e["start_iso"]).strftime("%Y-%m-%d %H:%M")
+    en = datetime.fromisoformat(e["end_iso"]).strftime("%Y-%m-%d %H:%M")
+    print(f"{s:<20} {en:<20} {str(e.get('calendar') or ''):<14} {e['title']}")
+```
+
+4. task scheduler and event creator:
+maintain some sort of SQL DB
+- if subtasks exist: 
+    db should look like: 
+        task:: task_id; 
+        subtask:: subtask_id, parent_id: task_id
+    add only subtasks to the actual calendar with id of parent as tag.
+- if subtasks dont exist: store only task
+- create events with the details given from both steps (calendar type, subtasks(if any))
+    - each subtask: must have parent id in notes; followed by any notes needed.
+    - if no subtask: just store parent_id: NULL; followed by any notes needed.
+
+
+5. have tests for each step.
+
+    
+
+fixes needed:
+- subtask should be follow time limit and must be scheduled within that specific day
+- scheduling fails. need to work on better scheduler.
