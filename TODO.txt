@@ -45,3 +45,11 @@ for e in sorted(filtered, key=lambda x: x["start_iso"]):
 
 
 4. have tests for each step. go slowly and have descriptive steps - easier to debug.
+
+-------
+
+updates to add:
+
+- is adding constraints easy? does it work? have to figure out a way to translate memory into this and normal queries onto this.
+- how to set deadline? can this be automated using an LLM?
+- free slots working? done.

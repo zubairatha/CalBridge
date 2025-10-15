@@ -72,7 +72,7 @@ class TimeAllotmentAgent:
     def _is_holiday(self, event: Dict) -> bool:
         """Check if an event is a holiday (should be excluded from busy time)"""
         calendar_name = (event.get("calendar") or "").lower()
-        return "holiday" in calendar_name
+        return "holiday" in calendar_name or "holidays" in calendar_name
     
     def _fetch_events_until_deadline(self, deadline: str) -> List[Dict]:
         """
@@ -88,6 +88,9 @@ class TimeAllotmentAgent:
             # Calculate days from now to deadline
             now = datetime.now().astimezone()
             deadline_dt = datetime.fromisoformat(deadline.replace('Z', '+00:00'))
+            if deadline_dt.tzinfo is None:
+                # If deadline is timezone-naive, assume local timezone
+                deadline_dt = deadline_dt.replace(tzinfo=now.tzinfo)
             days_until_deadline = (deadline_dt - now).days + 1
             
             # Ensure we don't fetch too far into the future (max 365 days)
@@ -111,6 +114,10 @@ class TimeAllotmentAgent:
                     event_start = datetime.fromisoformat(event["start_iso"].replace('Z', '+00:00'))
                     if event_start <= deadline_dt:
                         filtered_events.append(event)
+                    # else:
+                    #     print(f"DEBUG: Skipping event after deadline: {event['title']} at {event['start_iso']}")
+                # else:
+                #     print(f"DEBUG: Skipping holiday: {event['title']} in calendar {event['calendar']}")
             
             return filtered_events
             
@@ -130,6 +137,9 @@ class TimeAllotmentAgent:
         """
         now = datetime.now().astimezone()
         deadline_dt = datetime.fromisoformat(deadline.replace('Z', '+00:00'))
+        if deadline_dt.tzinfo is None:
+            # If deadline is timezone-naive, assume local timezone
+            deadline_dt = deadline_dt.replace(tzinfo=now.tzinfo)
         
         # Sort events by start time
         sorted_events = sorted(events, key=lambda x: x["start_iso"])
@@ -141,6 +151,10 @@ class TimeAllotmentAgent:
             event_start = datetime.fromisoformat(event["start_iso"].replace('Z', '+00:00'))
             event_end = datetime.fromisoformat(event["end_iso"].replace('Z', '+00:00'))
             
+            # Skip events that are completely in the past
+            if event_end <= current_time:
+                continue
+                
             # If there's a gap before this event, it's a free slot
             if current_time < event_start:
                 # Don't extend beyond deadline
@@ -151,7 +165,7 @@ class TimeAllotmentAgent:
                         end_iso=slot_end.isoformat()
                     ))
             
-            # Move current time to end of this event
+            # Move current time to end of this event (but not before current time)
             current_time = max(current_time, event_end)
         
         # Add final slot from last event to deadline if there's time

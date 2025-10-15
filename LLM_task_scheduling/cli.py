@@ -176,7 +176,12 @@ def free_time_command(args):
             for i, slot in enumerate(summary['free_slots'][:args.max_slots], 1):
                 start_dt = datetime.fromisoformat(slot['start'])
                 end_dt = datetime.fromisoformat(slot['end'])
-                print(f"  {i:2d}. {start_dt.strftime('%Y-%m-%d %H:%M')} → {end_dt.strftime('%H:%M')} ({slot['duration_minutes']:3d} min)")
+                # Show full date/time if different dates, otherwise just time
+                if start_dt.date() == end_dt.date():
+                    end_format = end_dt.strftime('%H:%M')
+                else:
+                    end_format = end_dt.strftime('%Y-%m-%d %H:%M')
+                print(f"  {i:2d}. {start_dt.strftime('%Y-%m-%d %H:%M')} → {end_format} ({slot['duration_minutes']:3d} min)")
             
             if len(summary['free_slots']) > args.max_slots:
                 print(f"     ... and {len(summary['free_slots']) - args.max_slots} more slots")

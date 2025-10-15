@@ -14,6 +14,13 @@ from .llm_decomposer import LLMTaskDecomposer, TaskDecomposition
 from .time_allotment import TimeAllotmentAgent, ScheduledTask
 from .event_creator import EventCreator, EventCreationResult, CreatedEvent
 
+# Import task scheduler components
+import sys
+from pathlib import Path
+sys.path.append(str(Path(__file__).parent.parent / "task_scheduler"))
+from task_scheduler import ConstraintAdder
+from datetime import time, date
+
 
 @dataclass
 class SchedulingRequest:
@@ -67,6 +74,53 @@ class LLMTaskScheduler:
         self.time_agent = TimeAllotmentAgent(calbridge_base, work_start_hour, work_end_hour)
         self.event_creator = EventCreator(calbridge_base)
     
+    def _convert_constraints(self, constraints_dict: Optional[Dict[str, Any]]) -> Optional[ConstraintAdder]:
+        """
+        Convert dictionary constraints to ConstraintAdder object
+        
+        Args:
+            constraints_dict: Dictionary with constraint specifications
+            
+        Returns:
+            ConstraintAdder object or None
+        """
+        if not constraints_dict:
+            return None
+            
+        constraints = ConstraintAdder()
+        
+        # Handle weekly blackouts
+        if 'weekly_blackouts' in constraints_dict:
+            weekly_blackouts = constraints_dict['weekly_blackouts']
+            for weekday_str, blackout_periods in weekly_blackouts.items():
+                weekday = int(weekday_str)  # 0=Monday, 6=Sunday
+                for period in blackout_periods:
+                    start_time_str, end_time_str = period
+                    start_t = time.fromisoformat(start_time_str)
+                    end_t = time.fromisoformat(end_time_str)
+                    constraints.add_weekly_blackout(weekday, start_t, end_t)
+        
+        # Handle date blackouts
+        if 'date_blackouts' in constraints_dict:
+            date_blackouts = constraints_dict['date_blackouts']
+            for date_str, blackout_periods in date_blackouts.items():
+                date_obj = date.fromisoformat(date_str)
+                for period in blackout_periods:
+                    start_time_str, end_time_str = period
+                    start_t = time.fromisoformat(start_time_str)
+                    end_t = time.fromisoformat(end_time_str)
+                    constraints.add_date_blackout(date_obj, start_t, end_t)
+        
+        # Handle max tasks per day
+        if 'max_tasks_per_day' in constraints_dict:
+            constraints.set_max_tasks_per_day(constraints_dict['max_tasks_per_day'])
+        
+        # Handle min gap minutes
+        if 'min_gap_minutes' in constraints_dict:
+            constraints.set_min_gap_minutes(constraints_dict['min_gap_minutes'])
+        
+        return constraints
+    
     def schedule_task(self, request: SchedulingRequest) -> SchedulingResult:
         """
         Schedule a task using the complete LLM workflow
@@ -112,12 +166,13 @@ class LLMTaskScheduler:
             
             # Step 4: Schedule tasks using time allotment agent
             print(f"Step 3: Scheduling {len(task_titles)} tasks")
+            constraints_obj = self._convert_constraints(request.constraints)
             scheduled_tasks = self.time_agent.schedule_tasks(
                 task_titles=task_titles,
                 task_durations=task_durations,
                 deadline=request.deadline,
                 calendar_type=decomposition.calendar_type,
-                constraints=request.constraints
+                constraints=constraints_obj
             )
             print(f"  Scheduled {len(scheduled_tasks)} tasks")
             
