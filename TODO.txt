@@ -1,15 +1,15 @@
 LLM here must be ollama llama3
-1. create user memory - in json format. stuff like: preferences: 1. gym 1-2 pm, 2. weekly capstone meeting: monday through friday. 3. prefer uni work early mornings, side projects in the late evenings. 4. wake up at 6, sleep at 11. these can be used to understand existing slots or relevant memory.
 
-2. create smart LLM decomposer (can be multiple steps using Langgraph/Langchain) which takes the task, along with the deadline and smartly decides 
+1. create smart LLM decomposer agent (can be multiple steps using Langgraph/Langchain) which takes the task, along with the deadline and smartly decides 
 - which calendar to add the event to 
-- break the event down into 1-10 subtasks based on the task difficulty.
+- break the event down into 2-5 subtasks and allot time needed for each subtask. One subtask cannot exceed 3 hours. If it is super simple - it can even not have a subtask.
+- this returns ONLY substasks with time (in minutes) for each and None if no subtask.
 
-3. time allotment (LLM - again use langgraph/langchain if multiple steps needed)
-- extract free time slots from the calendar (holidays dont count as busy - so always exclude [snippet on how to do this below]), basically list events and then whatever time slots are free apart from those till the deadline can act as free slots.
-- extact preferences from the memory 
-- pass BOTH to the LLM and assign each task (or subtasks) with a time slot - this must be done smartly with a good prompt.
-- schedule nothing before 6AM or after 11PM unless specifically asked to do so.
+
+2. time allotment agent [This part does not need an LLM]
+thoroughly read info in task_scheduler/ folder to gauge what works how - this is going to be our scheduler.
+- extract free time slots from the calendar till the deadline (holidays dont count as busy - so always exclude [snippet on how to do this below]), basically list events and then whatever time slots are free apart from those till the deadline can act as free slots. Make sure the format of the slots is maintained as per the input requirements.
+- use the task_scheduler from task_scheduler/ to schedule the tasks.
 
 small snippet to list events without holidays:
 ```
@@ -34,24 +34,14 @@ for e in sorted(filtered, key=lambda x: x["start_iso"]):
     en = datetime.fromisoformat(e["end_iso"]).strftime("%Y-%m-%d %H:%M")
     print(f"{s:<20} {en:<20} {str(e.get('calendar') or ''):<14} {e['title']}")
 ```
+- have a test here to test if time slots are actually calculated till the deadline and not beyond.
+- make sure the output from this step exactly matches the input structure of the api for CalBridge to create the event.
 
-4. task scheduler and event creator:
-maintain some sort of SQL DB
-- if subtasks exist: 
-    db should look like: 
-        task:: task_id; 
-        subtask:: subtask_id, parent_id: task_id
-    add only subtasks to the actual calendar with id of parent as tag.
-- if subtasks dont exist: store only task
+3. task scheduler and event creator:
+- generate IDs for all events: event_id for every event. if an event has a parent (i.e it is a subtask) let it have a parent_id.
 - create events with the details given from both steps (calendar type, subtasks(if any))
     - each subtask: must have parent id in notes; followed by any notes needed.
     - if no subtask: just store parent_id: NULL; followed by any notes needed.
 
 
-5. have tests for each step.
-
-    
-
-fixes needed:
-- subtask should be follow time limit and must be scheduled within that specific day
-- scheduling fails. need to work on better scheduler.
+4. have tests for each step. go slowly and have descriptive steps - easier to debug.
