@@ -29,6 +29,11 @@ A LangGraph-based agent system for processing natural language queries and extra
 - **Purpose**: LLM-based classification of tasks and calendar assignment
 - **Features**: Classifies tasks as simple/complex, assigns Work/Home calendar via CalBridge API, generates short imperative titles, preserves duration unchanged
 
+### 6. LLM Decomposer (LD)
+- **File**: `llm_decomposer.py`
+- **Purpose**: Decomposes complex tasks into 2-5 schedulable subtasks
+- **Features**: LLM-based decomposition with ISO-8601 durations (≤ PT3H), validation and constraint enforcement, post-processing merges TD metadata
+
 ## Testing
 
 ### Full Pipeline Test (UQ → SE → AR → TS)
@@ -39,6 +44,11 @@ cd /Users/zubair/Desktop/Dev/calendar-test && source .venv/bin/activate && pytho
 ### Full Pipeline Test with TD (UQ → SE → AR → TS → TD)
 ```bash
 cd /Users/zubair/Desktop/Dev/calendar-test && source .venv/bin/activate && python Streamlined_Agents/test/test_full_pipeline_with_td.py "your query here"
+```
+
+### Full Pipeline Test with LD (UQ → SE → AR → TS → TD → LD)
+```bash
+cd /Users/zubair/Desktop/Dev/calendar-test && source .venv/bin/activate && python Streamlined_Agents/test/test_full_pipeline_with_ld.py "your query here"
 ```
 
 ### Interactive Pipeline Mode
@@ -113,9 +123,39 @@ cd /Users/zubair/Desktop/Dev/calendar-test && source .venv/bin/activate && pytho
 cd /Users/zubair/Desktop/Dev/calendar-test && source .venv/bin/activate && python Streamlined_Agents/test/test_full_pipeline_with_td.py --scenarios
 ```
 
+#### LLM Decomposer
+```bash
+cd /Users/zubair/Desktop/Dev/calendar-test && source .venv/bin/activate && python Streamlined_Agents/test/test_llm_decomposer.py --basic
+```
+
+#### LLM Decomposer - All Tests
+```bash
+cd /Users/zubair/Desktop/Dev/calendar-test && source .venv/bin/activate && python Streamlined_Agents/test/test_llm_decomposer.py --all
+```
+
+#### LLM Decomposer - Interactive
+```bash
+cd /Users/zubair/Desktop/Dev/calendar-test && source .venv/bin/activate && python Streamlined_Agents/test/test_llm_decomposer.py --interactive
+```
+
+#### Full Pipeline with LD - Multiple Examples
+```bash
+cd /Users/zubair/Desktop/Dev/calendar-test && source .venv/bin/activate && python Streamlined_Agents/test/test_full_pipeline_with_ld.py --multiple
+```
+
+#### Full Pipeline with LD - Simple vs Complex
+```bash
+cd /Users/zubair/Desktop/Dev/calendar-test && source .venv/bin/activate && python Streamlined_Agents/test/test_full_pipeline_with_ld.py --simple-vs-complex
+```
+
+#### Full Pipeline with LD - Interactive
+```bash
+cd /Users/zubair/Desktop/Dev/calendar-test && source .venv/bin/activate && python Streamlined_Agents/test/test_full_pipeline_with_ld.py --interactive
+```
+
 ## Configuration
 
-- **LLM**: Ollama with Qwen2.5:14b-instruct (temperature 0.7 for most agents, 0.2 for TD)
+- **LLM**: Ollama with Qwen2.5:14b-instruct (temperature 0.7 for most agents, 0.2 for TD, 0.3 for LD)
 - **Timezone**: Default America/New_York (configurable)
 - **CalBridge API**: Default http://127.0.0.1:8765 (for calendar lookup)
 - **Output**: JSON format with time information and task classification
@@ -132,5 +172,6 @@ The complete pipeline includes:
 3. **AR** → Absolute Resolver (resolve to absolute dates/times)
 4. **TS** → Time Standardizer (convert to ISO formats)
 5. **TD** → Task Difficulty Analyzer (classify task and assign calendar)
+6. **LD** → LLM Decomposer (decompose complex tasks into subtasks) - *only for complex tasks*
 
-The Time Standardizer provides ISO format datetime strings, and the Task Difficulty Analyzer provides calendar assignment and task classification suitable for calendar integration via CalBridge API.
+The Time Standardizer provides ISO format datetime strings, the Task Difficulty Analyzer provides calendar assignment and task classification, and the LLM Decomposer breaks down complex tasks into manageable subtasks suitable for calendar integration via CalBridge API.

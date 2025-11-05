@@ -25,6 +25,16 @@ def get_llm_low_temp():
         num_predict=256  # Shorter responses for JSON-only output
     )
 
+def get_llm_decomposer():
+    """Get configured Ollama LLM instance for LLM Decomposer (temp 0.3, compact output)"""
+    return OllamaLLM(
+        model=OLLAMA_MODEL,
+        base_url=OLLAMA_BASE_URL,
+        temperature=0.3,  # Low temperature for deterministic decomposition
+        top_p=0.9,
+        num_predict=384  # Compact JSON output for subtasks
+    )
+
 def test_llm():
     """Test the LLM connection"""
     try:
