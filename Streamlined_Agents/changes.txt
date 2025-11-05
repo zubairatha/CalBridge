@@ -1,0 +1,13 @@
+slot extractor
+- unable to have ranges with dates fix that.
+
+absolute resolver 
+- very huge (needs to be made much more concise and clearer)
+- gets very confused with tomorrow/today due to examples.
+- uses duration for calculating start and end time even when specific mentions are written. 
+- i think the main issue lies with prompt being too huge.
+- not extracting now
+- its good with dates.
+- if one try does not work, pls retry.
+
+
