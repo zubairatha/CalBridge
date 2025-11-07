@@ -81,6 +81,7 @@ Mark **start_text** when you see a start cue:
 
 ### Start Only:
 - "call mom **tomorrow**" → `{{"start_text":"tomorrow","end_text":null,"duration":null}}`
+- "call mom **tomorrow 4pm**" → `{{"start_text":"tomorrow 4pm","end_text":null,"duration":null}}`
 - "meeting **at 3pm**" → `{{"start_text":"3pm","end_text":null,"duration":null}}`
 - "start **next week**" → `{{"start_text":"next week","end_text":null,"duration":null}}`
 - "begin **this evening**" → `{{"start_text":"this evening","end_text":null,"duration":null}}`
