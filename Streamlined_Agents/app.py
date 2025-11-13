@@ -411,7 +411,261 @@ Examples:
         help="Output final result as JSON"
     )
     
+    parser.add_argument(
+        "--list",
+        "-l",
+        action="store_true",
+        help="List all events in the database"
+    )
+    
+    parser.add_argument(
+        "--delete",
+        "-D",
+        metavar="TASK_ID",
+        help="Delete a task by ID (cascade if parent)"
+    )
+    
+    parser.add_argument(
+        "--delete-parent",
+        metavar="PARENT_ID",
+        help="Delete all children of a parent task by parent ID"
+    )
+    
+    parser.add_argument(
+        "--delete-all",
+        action="store_true",
+        help="Delete all events from both the database and calendar (WARNING: This cannot be undone!)"
+    )
+    
     args = parser.parse_args()
+    
+    # List events mode
+    if args.list:
+        from event_creator_agent import EventCreatorAgent
+        agent = EventCreatorAgent(db_path=args.db_path)
+        events = agent.list_events()
+        
+        if not events:
+            print("📭 No events found in the database")
+            return
+        
+        print("\n" + "=" * 80)
+        print("📋 EVENTS IN DATABASE")
+        print("=" * 80)
+        print(f"Total: {len(events)} event(s)\n")
+        
+        # Group by parent tasks
+        parent_tasks = [e for e in events if e["type"] == "parent"]
+        simple_tasks = [e for e in events if e["type"] == "simple"]
+        subtasks = [e for e in events if e["type"] == "subtask"]
+        
+        # Print parent tasks with their children
+        for parent in parent_tasks:
+            print(f"📁 PARENT: {parent['title']}")
+            print(f"   ID: {parent['task_id']}")
+            print(f"   Children: {parent['child_count']}")
+            print(f"   Has Event: {'No' if not parent['has_event'] else 'Yes (parent tasks have no calendar events)'}")
+            print()
+            
+            # Print children
+            children = [e for e in subtasks if e['parent_id'] == parent['task_id']]
+            for i, child in enumerate(children, 1):
+                print(f"   └─ {i}. {child['title']}")
+                print(f"      ID: {child['task_id']}")
+                if child['has_event']:
+                    print(f"      Calendar Event ID: {child['calendar_event_id']}")
+                    print(f"      Calendar ID: {child['calendar_id']}")
+                else:
+                    print(f"      Calendar Event: None")
+                print()
+        
+        # Print simple tasks
+        for task in simple_tasks:
+            print(f"📝 SIMPLE: {task['title']}")
+            print(f"   ID: {task['task_id']}")
+            if task['has_event']:
+                print(f"   Calendar Event ID: {task['calendar_event_id']}")
+                print(f"   Calendar ID: {task['calendar_id']}")
+            else:
+                print(f"   Calendar Event: None")
+            print()
+        
+        # Print orphaned subtasks (if any)
+        orphaned = [e for e in subtasks if e['parent_id'] not in [p['task_id'] for p in parent_tasks]]
+        if orphaned:
+            print("⚠️  ORPHANED SUBTASKS (parent not found):")
+            for task in orphaned:
+                print(f"   • {task['title']} (ID: {task['task_id']}, Parent: {task['parent_id']})")
+            print()
+        
+        if args.json:
+            print("\n" + "=" * 80)
+            print("📄 JSON OUTPUT")
+            print("=" * 80)
+            print(json.dumps(events, indent=2, default=str))
+        
+        return
+    
+    # Delete by ID mode
+    if args.delete:
+        from event_creator_agent import EventCreatorAgent
+        agent = EventCreatorAgent(db_path=args.db_path)
+        
+        print("\n" + "=" * 80)
+        print(f"🗑️  DELETING TASK: {args.delete}")
+        print("=" * 80)
+        
+        result = agent.delete_by_id(args.delete)
+        
+        if result.deleted:
+            print(f"✅ Successfully deleted {len(result.deleted)} task(s):")
+            for item in result.deleted:
+                print(f"   • Task ID: {item['task_id']}")
+                if item.get('calendar_event_id'):
+                    print(f"     Calendar Event ID: {item['calendar_event_id']}")
+        
+        if result.skipped:
+            print(f"⚠️  Skipped {len(result.skipped)} task(s):")
+            for item in result.skipped:
+                print(f"   • Task ID: {item['task_id']}")
+                print(f"     Reason: {item.get('reason', 'Unknown')}")
+        
+        if result.errors:
+            print(f"❌ Errors deleting {len(result.errors)} task(s):")
+            for item in result.errors:
+                print(f"   • Task ID: {item['task_id']}")
+                print(f"     Error: {item.get('reason', 'Unknown error')}")
+        
+        if not result.deleted and not result.skipped and not result.errors:
+            print("⚠️  No tasks found to delete")
+        
+        if args.json:
+            print("\n" + "=" * 80)
+            print("📄 JSON OUTPUT")
+            print("=" * 80)
+            print(json.dumps(result.to_dict(), indent=2, default=str))
+        
+        return
+    
+    # Delete by parent ID mode
+    if args.delete_parent:
+        from event_creator_agent import EventCreatorAgent
+        agent = EventCreatorAgent(db_path=args.db_path)
+        
+        print("\n" + "=" * 80)
+        print(f"🗑️  DELETING CHILDREN OF PARENT: {args.delete_parent}")
+        print("=" * 80)
+        
+        result = agent.delete_by_parent_id(args.delete_parent)
+        
+        if result.deleted:
+            print(f"✅ Successfully deleted {len(result.deleted)} subtask(s):")
+            for item in result.deleted:
+                print(f"   • Task ID: {item['task_id']}")
+                if item.get('calendar_event_id'):
+                    print(f"     Calendar Event ID: {item['calendar_event_id']}")
+            print(f"   Parent task also deleted")
+        
+        if result.skipped:
+            print(f"⚠️  Skipped {len(result.skipped)} task(s):")
+            for item in result.skipped:
+                print(f"   • Task ID: {item['task_id']}")
+                print(f"     Reason: {item.get('reason', 'Unknown')}")
+        
+        if result.errors:
+            print(f"❌ Errors deleting {len(result.errors)} task(s):")
+            for item in result.errors:
+                print(f"   • Task ID: {item['task_id']}")
+                print(f"     Error: {item.get('reason', 'Unknown error')}")
+        
+        if not result.deleted and not result.skipped and not result.errors:
+            print("⚠️  No tasks found to delete")
+        
+        if args.json:
+            print("\n" + "=" * 80)
+            print("📄 JSON OUTPUT")
+            print("=" * 80)
+            print(json.dumps(result.to_dict(), indent=2, default=str))
+        
+        return
+    
+    # Delete all events mode
+    if args.delete_all:
+        from event_creator_agent import EventCreatorAgent
+        agent = EventCreatorAgent(db_path=args.db_path)
+        
+        # Get confirmation
+        print("\n" + "=" * 80)
+        print("⚠️  WARNING: DELETE ALL EVENTS")
+        print("=" * 80)
+        print("This will delete ALL events from:")
+        print("  1. The calendar (via CalBridge API)")
+        print("  2. The database (tasks and event_map tables)")
+        print("\nThis action CANNOT be undone!")
+        print("=" * 80)
+        
+        # List current events
+        events = agent.list_events()
+        if events:
+            print(f"\n📋 Current events in database: {len(events)}")
+            print("\nEvents to be deleted:")
+            for event in events:
+                if event["has_event"]:
+                    print(f"   • {event['title']} (ID: {event['task_id']}, Event: {event['calendar_event_id']})")
+                else:
+                    print(f"   • {event['title']} (ID: {event['task_id']}, No calendar event)")
+        else:
+            print("\n📭 No events found in database")
+            return
+        
+        # Ask for confirmation
+        confirm = input("\nAre you sure you want to delete ALL events? (type 'yes' to confirm): ").strip().lower()
+        
+        if confirm != 'yes':
+            print("❌ Operation cancelled")
+            return
+        
+        print("\n" + "=" * 80)
+        print("🗑️  DELETING ALL EVENTS")
+        print("=" * 80)
+        
+        result = agent.delete_all_events()
+        
+        if result.deleted:
+            print(f"\n✅ Successfully deleted {len(result.deleted)} calendar event(s):")
+            for item in result.deleted:
+                print(f"   • Task ID: {item['task_id']}")
+                if item.get('calendar_event_id'):
+                    print(f"     Calendar Event ID: {item['calendar_event_id']}")
+        
+        if result.skipped:
+            print(f"\n⚠️  Skipped {len(result.skipped)} event(s) (already deleted):")
+            for item in result.skipped:
+                print(f"   • Task ID: {item['task_id']}")
+        
+        if result.errors:
+            print(f"\n❌ Errors deleting {len(result.errors)} event(s):")
+            for item in result.errors:
+                print(f"   • Task ID: {item.get('task_id', 'Unknown')}")
+                print(f"     Error: {item.get('reason', 'Unknown error')}")
+        
+        print("\n✅ All database entries have been deleted")
+        print("=" * 80)
+        
+        # Verify database is empty
+        remaining_events = agent.list_events()
+        if remaining_events:
+            print(f"\n⚠️  Warning: {len(remaining_events)} event(s) still remain in database")
+        else:
+            print("\n✅ Database is now empty")
+        
+        if args.json:
+            print("\n" + "=" * 80)
+            print("📄 JSON OUTPUT")
+            print("=" * 80)
+            print(json.dumps(result.to_dict(), indent=2, default=str))
+        
+        return
     
     # Interactive mode
     if args.interactive:
@@ -439,9 +693,14 @@ Examples:
         return
     
     # Single query mode
-    if not args.query:
+    if not args.query and not args.list and not args.delete and not args.delete_parent and not args.delete_all:
         parser.print_help()
         sys.exit(1)
+    
+    if not args.query:
+        # If no query but other flags were provided, they should have been handled above
+        # This is a fallback
+        sys.exit(0)
     
     orchestrator = PipelineOrchestrator(db_path=args.db_path)
     result = orchestrator.run_pipeline(args.query, args.timezone)

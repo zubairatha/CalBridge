@@ -637,6 +637,131 @@ class EventCreatorAgent:
                 "was_404": False,
                 "error": error
             }
+    
+    def list_events(self) -> List[Dict[str, Any]]:
+        """
+        List all events in the database
+        
+        Returns:
+            List of dictionaries with task information
+        """
+        conn = self._get_db_connection()
+        cursor = conn.cursor()
+        
+        try:
+            # Get all tasks with their event mappings
+            # SQLite doesn't support NULLS LAST, so we use CASE to order NULLs last
+            cursor.execute("""
+                SELECT 
+                    t.id,
+                    t.title,
+                    t.parent_id,
+                    em.calendar_id,
+                    em.calendar_event_id,
+                    (SELECT COUNT(*) FROM tasks WHERE parent_id = t.id) as child_count
+                FROM tasks t
+                LEFT JOIN event_map em ON t.id = em.task_id
+                ORDER BY CASE WHEN t.parent_id IS NULL THEN 0 ELSE 1 END, t.id
+            """)
+            
+            rows = cursor.fetchall()
+            events = []
+            
+            for row in rows:
+                task_id, title, parent_id, calendar_id, calendar_event_id, child_count = row
+                
+                # Determine task type
+                task_type = "parent" if child_count > 0 else ("subtask" if parent_id else "simple")
+                
+                event_info = {
+                    "task_id": task_id,
+                    "title": title,
+                    "type": task_type,
+                    "parent_id": parent_id,
+                    "calendar_id": calendar_id,
+                    "calendar_event_id": calendar_event_id,
+                    "has_event": calendar_event_id is not None,
+                    "child_count": child_count
+                }
+                events.append(event_info)
+            
+            return events
+            
+        except sqlite3.Error as e:
+            print(f"Error listing events: {e}")
+            return []
+        finally:
+            conn.close()
+    
+    def delete_all_events(self) -> DeleteResult:
+        """
+        Delete all events from both the database and calendar
+        
+        Returns:
+            DeleteResult with deletion status
+        """
+        result = DeleteResult(target="all")
+        
+        conn = self._get_db_connection()
+        cursor = conn.cursor()
+        
+        try:
+            # Get all tasks with their event mappings (only tasks that have calendar events)
+            cursor.execute("""
+                SELECT 
+                    t.id,
+                    t.title,
+                    em.calendar_event_id
+                FROM tasks t
+                INNER JOIN event_map em ON t.id = em.task_id
+            """)
+            
+            tasks_with_events = cursor.fetchall()
+            
+            # Delete each calendar event
+            for task_id, title, calendar_event_id in tasks_with_events:
+                if calendar_event_id:
+                    success, was_404, error = self._calbridge_delete_with_retry(calendar_event_id)
+                    
+                    if success:
+                        result.deleted.append({
+                            "task_id": task_id,
+                            "calendar_event_id": calendar_event_id
+                        })
+                    elif was_404:
+                        result.skipped.append({
+                            "task_id": task_id,
+                            "reason": "already_deleted"
+                        })
+                    else:
+                        result.errors.append({
+                            "task_id": task_id,
+                            "reason": error or "Unknown error"
+                        })
+            
+            # Delete all entries from event_map table
+            cursor.execute("DELETE FROM event_map")
+            event_map_deleted = cursor.rowcount
+            
+            # Delete all entries from tasks table
+            cursor.execute("DELETE FROM tasks")
+            tasks_deleted = cursor.rowcount
+            
+            conn.commit()
+            
+            print(f"Deleted {event_map_deleted} event mapping(s) from database")
+            print(f"Deleted {tasks_deleted} task(s) from database")
+            
+        except sqlite3.Error as e:
+            conn.rollback()
+            result.errors.append({
+                "task_id": "all",
+                "reason": f"Database error: {e}"
+            })
+        finally:
+            conn.close()
+        
+        return result
 
 
 # Example usage
