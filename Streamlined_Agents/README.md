@@ -34,6 +34,16 @@ A LangGraph-based agent system for processing natural language queries and extra
 - **Purpose**: Decomposes complex tasks into 2-5 schedulable subtasks
 - **Features**: LLM-based decomposition with ISO-8601 durations (≤ PT3H), validation and constraint enforcement, post-processing merges TD metadata
 
+### 7. Time Allotment Agent (TA)
+- **File**: `time_allotment_agent.py`
+- **Purpose**: Schedules tasks into calendar slots using task_scheduler
+- **Features**: Fetches free/busy slots from CalBridge API, optimally schedules tasks/subtasks, validates scheduled slots, generates IDs
+
+### 8. Event Creator Agent (EC)
+- **File**: `event_creator_agent.py`
+- **Purpose**: Creates and manages calendar events via CalBridge API
+- **Features**: Creates calendar events, stores task metadata in SQLite database, handles deletion (by ID, parent ID, or all events), maintains event_map for tracking calendar events
+
 ## Testing
 
 ### Full Pipeline Test (UQ → SE → AR → TS)
@@ -173,5 +183,35 @@ The complete pipeline includes:
 4. **TS** → Time Standardizer (convert to ISO formats)
 5. **TD** → Task Difficulty Analyzer (classify task and assign calendar)
 6. **LD** → LLM Decomposer (decompose complex tasks into subtasks) - *only for complex tasks*
+7. **TA** → Time Allotment Agent (schedule tasks into calendar slots)
+8. **EC** → Event Creator Agent (create calendar events via CalBridge API)
 
-The Time Standardizer provides ISO format datetime strings, the Task Difficulty Analyzer provides calendar assignment and task classification, and the LLM Decomposer breaks down complex tasks into manageable subtasks suitable for calendar integration via CalBridge API.
+The Time Standardizer provides ISO format datetime strings, the Task Difficulty Analyzer provides calendar assignment and task classification, the LLM Decomposer breaks down complex tasks into manageable subtasks, the Time Allotment Agent schedules tasks into available calendar slots, and the Event Creator Agent creates calendar events and tracks them in a SQLite database.
+
+## Database Management
+
+The Event Creator Agent uses a SQLite database (`event_creator.db`) to track all tasks and calendar events:
+
+- **Tasks Table**: Stores task IDs, titles, and parent-child relationships
+- **Event Map Table**: Maps task IDs to calendar event IDs and calendar IDs
+
+### List Events
+
+```bash
+python Streamlined_Agents/app.py --list
+```
+
+### Delete Events
+
+```bash
+# Delete a task by ID (cascade if parent)
+python Streamlined_Agents/app.py --delete <task_id>
+
+# Delete all children of a parent task
+python Streamlined_Agents/app.py --delete-parent <parent_id>
+
+# Delete all events (requires confirmation)
+python Streamlined_Agents/app.py --delete-all
+```
+
+**Note**: All delete operations remove events from both the calendar (via CalBridge API) and the database.

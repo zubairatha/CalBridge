@@ -56,6 +56,27 @@ Events will have notes like:
 - Simple: `id: <uuid>, parent_id: null`
 - Complex subtask: `id: <uuid>, parent_id: <parent-uuid>`
 
+## List Events
+
+View all events in the database:
+
+```bash
+python Streamlined_Agents/app.py --list
+```
+
+## Delete Events
+
+```bash
+# Delete a task by ID (cascade if parent)
+python Streamlined_Agents/app.py --delete <task_id>
+
+# Delete all children of a parent task
+python Streamlined_Agents/app.py --delete-parent <parent_id>
+
+# Delete all events (requires confirmation)
+python Streamlined_Agents/app.py --delete-all
+```
+
 ## Troubleshooting
 
 **CalBridge not running?**

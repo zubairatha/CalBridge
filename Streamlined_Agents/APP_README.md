@@ -29,6 +29,9 @@ This will prompt you for queries continuously until you type 'quit' or 'exit'.
 - ✅ **Interactive Mode**: Continuous query processing
 - ✅ **JSON Output**: Optional JSON output for programmatic use
 - ✅ **Timezone Support**: Configurable timezone processing
+- ✅ **List Events**: View all events in the database with parent/child relationships
+- ✅ **Delete Events**: Delete tasks by ID, parent ID, or all events (with confirmation)
+- ✅ **Database Management**: SQLite database tracks all tasks and calendar event mappings
 
 ## Command Line Options
 
@@ -47,6 +50,10 @@ python Streamlined_Agents/app.py [QUERY] [OPTIONS]
 - `--timezone`, `-t TIMEZONE`: Timezone for processing (default: America/New_York)
 - `--db-path`, `-d PATH`: Path to Event Creator database (default: event_creator.db)
 - `--json`, `-j`: Output final result as JSON
+- `--list`, `-l`: List all events in the database
+- `--delete`, `-D TASK_ID`: Delete a task by ID (cascade if parent)
+- `--delete-parent PARENT_ID`: Delete all children of a parent task by parent ID
+- `--delete-all`: Delete all events from both the database and calendar (WARNING: requires confirmation)
 - `--help`, `-h`: Show help message
 
 ## Examples
@@ -84,6 +91,36 @@ python Streamlined_Agents/app.py "Review proposal next Monday" --timezone "Ameri
 ```bash
 python Streamlined_Agents/app.py "Call dentist tomorrow at 10am" --json
 ```
+
+### List All Events
+
+```bash
+python Streamlined_Agents/app.py --list
+```
+
+**Output:**
+- Shows all events in the database
+- Groups parent tasks with their children
+- Displays task IDs, calendar event IDs, and calendar IDs
+- Shows simple tasks separately
+
+### Delete Events
+
+```bash
+# Delete a task by ID (cascade if parent)
+python Streamlined_Agents/app.py --delete <task_id>
+
+# Delete all children of a parent task
+python Streamlined_Agents/app.py --delete-parent <parent_id>
+
+# Delete all events (requires confirmation)
+python Streamlined_Agents/app.py --delete-all
+```
+
+**Delete Operations:**
+- Removes events from both the calendar (via CalBridge API) and the database
+- Cascade deletion: Deleting a parent task automatically deletes all children
+- Confirmation required for `--delete-all` (type 'yes' to confirm)
 
 ### Interactive Mode
 
@@ -198,11 +235,40 @@ if result["success"]:
 - All agent files in `Streamlined_Agents/`
 - Test files in `Streamlined_Agents/test/`
 
+## Database Management
+
+The application uses a SQLite database (`event_creator.db`) to track all tasks and calendar events:
+
+- **Tasks Table**: Stores task IDs, titles, and parent-child relationships
+- **Event Map Table**: Maps task IDs to calendar event IDs and calendar IDs
+
+### List Events
+
+```bash
+python Streamlined_Agents/app.py --list
+```
+
+### Delete Events
+
+```bash
+# Delete a single task (cascade if parent)
+python Streamlined_Agents/app.py --delete <task_id>
+
+# Delete all children of a parent task
+python Streamlined_Agents/app.py --delete-parent <parent_id>
+
+# Delete all events (requires confirmation)
+python Streamlined_Agents/app.py --delete-all
+```
+
+**Note**: All delete operations remove events from both the calendar (via CalBridge API) and the database.
+
 ## Next Steps
 
 After running the application:
 1. Check your calendar for the created events
 2. Verify events have correct notes (task IDs and parent IDs)
-3. Use the database to track created tasks
-4. Use delete functions to remove events if needed
+3. Use `--list` to view all events in the database
+4. Use `--delete` to remove specific events
+5. Use `--delete-all` to clear all events (with confirmation)
 
