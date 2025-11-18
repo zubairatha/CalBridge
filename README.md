@@ -4,12 +4,12 @@
 
 ## What CalBridge Does
 
-- **🔐 Handles Calendar Permissions**: Owns macOS Calendar access so your applications don't need TCC (Transparency, Consent, and Control) permissions
-- **🤖 Multi-Agent System**: Orchestrates 8 specialized agents working together to process natural language, extract time information, classify tasks, decompose complex projects, and schedule events
-- **📝 Natural Language Processing**: Processes queries like "Call mom tomorrow at 2pm" or "Plan a 5-day Japan trip by Nov 15" and automatically creates calendar events
-- **📅 Smart Calendar Assignment**: Automatically assigns tasks to Work or Home calendars based on task type using LLM-based classification
-- **🧩 Complex Task Breakdown**: Decomposes complex projects into manageable subtasks and schedules them optimally using intelligent decomposition
-- **🔌 RESTful API**: Exposes a clean HTTP API for programmatic calendar access from any application
+- **Handles Calendar Permissions**: Owns macOS Calendar access so your applications don't need TCC (Transparency, Consent, and Control) permissions
+- **Multi-Agent System**: Orchestrates 8 specialized agents working together to process natural language, extract time information, classify tasks, decompose complex projects, and schedule events
+- **Natural Language Processing**: Processes queries like "Call mom tomorrow at 2pm" or "Plan a 5-day Japan trip by Nov 15" and automatically creates calendar events
+- **Smart Calendar Assignment**: Automatically assigns tasks to Work or Home calendars based on task type using LLM-based classification
+- **Complex Task Breakdown**: Decomposes complex projects into manageable subtasks and schedules them optimally using intelligent decomposition
+- **RESTful API**: Exposes a clean HTTP API for programmatic calendar access from any application
 
 Built with **FastAPI**, **PyObjC**, and powered by **Ollama** for LLM-based natural language understanding. The multi-agent architecture enables modular, testable, and extensible task processing.
 
