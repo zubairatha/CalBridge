@@ -1,0 +1,252 @@
+# Event Creator Agent (EC) — Create + Delete
+
+## Purpose
+
+* **Create** calendar events via CalBridge from Time Allotment outputs and persist minimal task metadata locally.
+* **Delete** calendar events by **task `id`** or **`parent_id`** (cascading to child events) and keep the local DB consistent.
+
+---
+
+## Inputs
+
+### Create (from Time Allotment)
+
+* **Simple task**
+
+  ```json
+  {
+    "calendar":"<calendar_id>",
+    "type":"simple",
+    "title":"<string>",
+    "slot":["<ISO start>","<ISO end>"],
+    "id":"<uuid4>",
+    "parent_id": null
+  }
+  ```
+* **Complex task**
+
+  ```json
+  {
+    "calendar":"<calendar_id>",
+    "type":"complex",
+    "title":"<string>",
+    "id":"<uuid4>",
+    "parent_id": null,
+    "subtasks":[
+      {"title":"<string>","slot":["<ISO start>","<ISO end>"],"parent_id":"<parent_uuid>","id":"<uuid4>"}
+      // up to 5 subtasks
+    ]
+  }
+  ```
+
+### Delete
+
+* **By id**
+
+  ```json
+  { "delete_by": "id", "id": "<uuid4>" }
+  ```
+* **By parent_id**
+
+  ```json
+  { "delete_by": "parent_id", "parent_id": "<uuid4>" }
+  ```
+
+---
+
+## Outputs
+
+### Create
+
+* One CalBridge **POST** per calendar event created.
+* Local DB upserts.
+
+### Delete
+
+* One CalBridge **DELETE** per event removed.
+* Local DB deletes.
+* Structured result:
+
+  ```json
+  {
+    "stage":"EC",
+    "kind":"delete",
+    "target":"id|parent_id",
+    "deleted":[{"task_id":"<uuid>","calendar_event_id":"<id>"}],
+    "skipped":[{"task_id":"<uuid>","reason":"not_found|already_deleted"}],
+    "errors":[{"task_id":"<uuid>","reason":"<text>"}]
+  }
+  ```
+
+---
+
+## Local DB
+
+### Tables
+
+* **tasks**
+
+  * `id` TEXT (PK, UUID)
+  * `title` TEXT NOT NULL
+  * `parent_id` TEXT NULL
+* **event_map**
+
+  * `task_id` TEXT (PK, FK→tasks.id)
+  * `calendar_id` TEXT NOT NULL
+  * `calendar_event_id` TEXT NOT NULL
+  * UNIQUE(`calendar_id`,`calendar_event_id`)
+
+### Policies
+
+* **Upsert** by `tasks.id` and `event_map.task_id` to handle retries safely.
+* **Delete cascade** performed explicitly by EC (not DB-level).
+
+---
+
+## Create Rules
+
+### Simple
+
+1. Validate presence of `calendar`, `title`, `slot[2]`, `id`, `parent_id == null`.
+2. Build CalBridge POST payload:
+
+   ```json
+   {
+     "calendar_id":"<calendar>",
+     "title":"<title>",
+     "start":"<ISO start>",
+     "end":"<ISO end>",
+     "notes":"id:<id>, parent_id:null",
+     "metadata":{
+       "task_id":"<id>",
+       "parent_id":null,
+       "created_by":"EC",
+       "type":"simple"
+     }
+   }
+   ```
+3. POST to CalBridge; capture returned `calendar_event_id`.
+4. DB upserts:
+
+   * `tasks`: (`id`,`title`,`parent_id=null`)
+   * `event_map`: (`task_id=id`,`calendar_id`,`calendar_event_id`)
+
+### Complex
+
+1. Validate presence of `calendar`, `title`, `id`, `parent_id==null`, and `subtasks[1..5]` with `title`, `slot[2]`, `id`, `parent_id == parent.id`.
+2. **Do not** create an event for the parent.
+3. For each subtask:
+
+   * POST payload:
+
+     ```json
+     {
+       "calendar_id":"<calendar>",
+       "title":"<subtask.title>",
+       "start":"<subtask.slot[0]>",
+       "end":"<subtask.slot[1]>",
+       "notes":"id:<subtask.id>, parent_id:<parent.id>",
+       "metadata":{
+         "task_id":"<subtask.id>",
+         "parent_id":"<parent.id>",
+         "created_by":"EC",
+         "type":"complex-subtask"
+       }
+     }
+     ```
+   * On success, upsert `event_map` for the subtask.
+4. DB upserts:
+
+   * `tasks` parent row (`id=parent.id`, `title`, `parent_id=null`)
+   * `tasks` rows for each subtask (`id=sub.id`, `title=sub.title`, `parent_id=parent.id`)
+
+---
+
+## Delete Rules
+
+### By id
+
+1. Lookup `tasks.id == <id>`.
+
+   * If missing → `skipped: not_found`.
+2. Determine role:
+
+   * If the id has children (`tasks.parent_id == <id>` rows exist): treat as **parent**.
+   * Else: treat as **child** (simple or subtask).
+3. **Child** path:
+
+   * Find `event_map.task_id == <id>` → `calendar_id`, `calendar_event_id`.
+   * CalBridge DELETE(`calendar_event_id`):
+
+     * 2xx → success.
+     * 404 → treat as success, record `skipped: already_deleted`.
+     * 4xx (other) → `errors`.
+   * Remove `event_map` row and `tasks` row for `<id>`.
+4. **Parent** path:
+
+   * Gather children with `parent_id == <id>`.
+   * For each child: perform the **Child** path deletion.
+   * Finally, delete the parent row from `tasks` (no `event_map` for parent).
+
+### By parent_id
+
+1. Gather all children where `tasks.parent_id == <parent_id>`.
+2. For each child:
+
+   * Resolve `event_map`, call CalBridge DELETE, remove `event_map` + child `tasks` row.
+3. Delete parent row from `tasks`.
+
+---
+
+## Validation
+
+* **Create**: fail fast if required fields missing or `start >= end`.
+* **Times**: must be ISO with numeric offset; EC must not change timezones or offsets.
+* **Notes/metadata**: must include `task_id` and `parent_id`.
+* **Delete**: only delete events whose `task_id` matches the input (by `event_map` or by verifying event `notes/metadata.task_id` if `event_map` is absent).
+
+---
+
+## Idempotency & Retries
+
+* Use a stable idempotency key per POST/DELETE if CalBridge supports it (e.g., `task_id`).
+* Retries:
+
+  * Network/5xx → backoff (e.g., 100ms, 500ms, 2s; max 3).
+  * 4xx invalid payload/id → do not retry; report in `errors`.
+* On re-run, upserts and UNIQUE constraints prevent duplicate DB rows.
+
+---
+
+## Partial Failures
+
+* For complex creates: if any subtask POST fails after retries, return a **partial failure** (list created event ids and failed items). Do not auto-delete already created events.
+* For deletes: continue deleting remaining targets; report `deleted`, `skipped`, and `errors` arrays.
+
+---
+
+## Security & Ownership (recommended)
+
+* Only operate on events whose `metadata.source == "Agentic_Task_Scheduling/EC"` or whose `notes` parses a matching `task_id`. Prevents accidental deletion of unrelated events.
+
+---
+
+## Logging & Audit
+
+* Log payloads (minus PII), CalBridge responses, DB changes, retries, and final status.
+* Optional audit table `{timestamp, op:create|delete, task_id, parent_id, calendar_event_id, status}`.
+
+---
+
+## Example Notes Strings
+
+* Simple: `id:fc0b84e1-..., parent_id:null`
+* Subtask: `id:f6da9ab1-..., parent_id:19b71357-...`
+
+---
+
+**Operational Summary**
+
+* Create: simple → 1 event; complex → subtask events only; store parent+children metadata.
+* Delete: by `id` (child event or cascade if parent) or by `parent_id` (all children + parent row).
+* Keep DB mappings in sync; be idempotent; validate strictly; surface partial failures clearly.

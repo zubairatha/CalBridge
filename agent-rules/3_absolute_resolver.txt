@@ -1,0 +1,203 @@
+# Absolute Resolver — Spec
+
+## Input (must be provided)
+
+* `NOW_ISO` (ISO with numeric offset, e.g., `2025-10-18T15:00:00-04:00`)
+* `TIMEZONE` (IANA, e.g., `America/New_York`)
+* **Helpers** (all as strings in the same canonical format where applicable):
+
+  * `TODAY_HUMAN` (e.g., `Saturday, October 18, 2025`)
+  * `END_OF_TODAY` (e.g., `October 18, 2025 11:59 pm`)
+  * `END_OF_WEEK` (Sun 11:59 pm of current week)
+  * `END_OF_MONTH` (EOM 11:59 pm)
+  * `NEXT_MONDAY` (next Monday 09:00 am anchor for “next week”)
+  * `NEXT_OCCURRENCES` for weekdays (`Monday`…`Sunday`, values like `October 24, 2025`)
+* **Slots** from the Slot Extractor:
+
+  ```json
+  {"start_text": string|null, "end_text": string|null, "duration": string|null}
+  ```
+
+## Output (STRICT JSON)
+
+```json
+{
+  "start_text": "Month DD, YYYY HH:MM am/pm",
+  "end_text":   "Month DD, YYYY HH:MM am/pm",
+  "duration":   "2h" | "45m" | null
+}
+```
+
+* Use **exact** canonical format: `"Month DD, YYYY HH:MM am/pm"`.
+* Copy `duration` **as-is** (do not convert or use it to move start/end).
+
+---
+
+## Core principles
+
+* **Determinism:** Always produce one specific calendar date/time for both `start_text` and `end_text`.
+* **Duration is metadata:** Never shift `start_text` or `end_text` because of duration.
+* **Safety:** Always ensure `start ≤ end`. If not, repair deterministically (see below).
+
+---
+
+## Resolution rules (from Slots → Absolute)
+
+### 1) If **both** `start_text` and `end_text` are present
+
+* Treat as a **window** with a start anchor and an end anchor (could be range or start+deadline; resolution is the same).
+* Resolve each side to an absolute datetime.
+* If one/both sides specify **only times** (no date), attach them to the **same resolved date** (see Weekday & Bare-Time rules).
+* **Cross-midnight rule:** if resolved `end < start`, first assume cross-midnight → move `end` forward **1 day**.
+
+  * If the end phrase is a weekday word and still lands before start, move to the **next occurrence** of that weekday.
+
+### 2) If **only** `end_text` is present (deadline)
+
+* **Start** = `NOW_ISO` expressed in canonical format.
+* **End** = resolved deadline; if it has **no time**, set to **11:59 pm** on that date.
+* If `end < start`, move `end` to the **next plausible occurrence** (usually +1 day; or next occurrence for weekday words).
+
+### 3) If **only** `start_text` is present (start-only)
+
+* **Start** = resolved start anchor.
+* **End** = `END_OF_TODAY` (based on NOW).
+
+  * If that would be `< start`, set end = **11:59 pm on start’s date**.
+
+### 4) If **neither** is present
+
+* **Start** = `NOW_ISO` (canonical format), **End** = `END_OF_TODAY`.
+
+---
+
+## Phrase resolution details
+
+### Weekday resolution (deterministic)
+
+* Unqualified weekday (e.g., “Friday”): choose the **next occurrence** (or **today** if it hasn’t passed yet).
+
+  * If today is that weekday **and** the referenced time window has already passed, use the **same weekday next week**.
+* “this Friday” → Friday **of the current week** (include today if applicable).
+* “next Friday” → Friday **of the following week**.
+
+### Bare times (no date)
+
+* If the time **today** is **after or equal** to `NOW`, schedule for **today**.
+* If the time **today** is **already past**, schedule for **tomorrow**.
+* When both sides are bare times → put both on the **same inferred date** (likely today or tomorrow per this rule).
+
+### Vague periods (default anchors)
+
+* morning → 09:00
+* afternoon → 13:00
+* evening → 18:00
+* tonight → 20:00
+* noon → 12:00
+* midnight → 00:00 (see disambiguation below)
+
+### “midnight” disambiguation
+
+* “**midnight Friday**” → 00:00 at the **start of Friday**.
+* “**Friday midnight**” → 00:00 at the **start of Saturday** (the moment after Friday ends).
+
+### “next week” / “this week”
+
+* “next week” (as start-only) → **NEXT_MONDAY 09:00 am**.
+* “end of week” (deadline) → **END_OF_WEEK 11:59 pm**.
+
+### Month/period endings
+
+* “by EOM” / “end of month” (deadline) → **END_OF_MONTH 11:59 pm**.
+
+### Numeric/ambiguous dates
+
+* Prefer month-name phrases when present.
+* If resolving numeric dates is necessary, respect the **LOCALE** hint provided to your model (e.g., en-US → MM/DD(/YY)).
+
+---
+
+## Safety & repairs
+
+* **Always ensure** `start ≤ end`.
+
+  * If violated after resolution, and the end phrase wasn’t a weekday/date that implies a later occurrence, set `end` = **11:59 pm on start’s date**.
+* Do **not** invent times other than the specified anchors (e.g., don’t add 09:00 unless covered by vague-period/weekday/bare-time rules).
+
+---
+
+## Duration handling
+
+* Copy `duration` straight through.
+* Do **not** compute `start = end − duration` or `end = start + duration`. Those calculations happen later (if needed) in scheduling logic—not here.
+
+---
+
+## Examples (assume NOW = `2025-10-18T15:00:00-04:00`, TZ = `America/New_York`)
+
+1. **Deadline only**
+   Slots: `{"start_text":null,"end_text":"Nov 15","duration":"2h"}`
+   Output:
+
+```json
+{
+  "start_text": "October 18, 2025 03:00 pm",
+  "end_text":   "November 15, 2025 11:59 pm",
+  "duration":   "2h"
+}
+```
+
+2. **Start-only (vague)**
+   Slots: `{"start_text":"tomorrow","end_text":null,"duration":null}`
+   Output:
+
+```json
+{
+  "start_text": "October 19, 2025 09:00 am",
+  "end_text":   "October 19, 2025 11:59 pm",
+  "duration":   null
+}
+```
+
+3. **Explicit times on weekday (range-like)**
+   Slots: `{"start_text":"Friday 2pm","end_text":"Friday 4pm","duration":"30m"}` with NEXT_OCCURRENCES.Friday = Oct 24, 2025
+   Output:
+
+```json
+{
+  "start_text": "October 24, 2025 02:00 pm",
+  "end_text":   "October 24, 2025 04:00 pm",
+  "duration":   "30m"
+}
+```
+
+4. **Bare time that already passed today**
+   Slots: `{"start_text":"11am","end_text":null,"duration":null}` (NOW is 3pm)
+   Output:
+
+```json
+{
+  "start_text": "October 19, 2025 11:00 am",
+  "end_text":   "October 19, 2025 11:59 pm",
+  "duration":   null
+}
+```
+
+5. **Start + deadline; end earlier than start (repair)**
+   Slots: `{"start_text":"Friday 8pm","end_text":"Friday 6pm","duration":null}` with NEXT_OCCURRENCES.Friday = Oct 24, 2025
+
+* Resolve start to Oct 24, 8:00 pm; end resolves to Oct 24, 6:00 pm → `end < start`
+* **Cross-midnight repair** → end becomes **Oct 25, 2025 06:00 pm** (add 1 day)
+  Output:
+
+```json
+{
+  "start_text": "October 24, 2025 08:00 pm",
+  "end_text":   "October 25, 2025 06:00 pm",
+  "duration":   null
+}
+```
+
+---
+
+These rules keep the Absolute Resolver **deterministic**, **explainable**, and perfectly aligned with the Slot Extractor’s output—ready for your final **Window Formatter** step to convert to ISO and normalize duration.

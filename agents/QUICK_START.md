@@ -5,13 +5,13 @@
 ```bash
 cd /Users/zubair/Desktop/Dev/calendar-test
 source .venv/bin/activate
-python Streamlined_Agents/app.py "Call mom tomorrow at 2pm for 30 minutes"
+python agents/app.py "Call mom tomorrow at 2pm for 30 minutes"
 ```
 
 ## Interactive Mode
 
 ```bash
-python Streamlined_Agents/app.py --interactive
+python agents/app.py --interactive
 ```
 
 ## Common Examples
@@ -19,25 +19,25 @@ python Streamlined_Agents/app.py --interactive
 ### Simple Tasks
 ```bash
 # Call with duration
-python Streamlined_Agents/app.py "Call dentist tomorrow at 10am for 45 minutes"
+python agents/app.py "Call dentist tomorrow at 10am for 45 minutes"
 
 # Meeting
-python Streamlined_Agents/app.py "Team meeting next Monday at 2pm for 1 hour"
+python agents/app.py "Team meeting next Monday at 2pm for 1 hour"
 
 # Deadline task
-python Streamlined_Agents/app.py "Complete report by Friday"
+python agents/app.py "Complete report by Friday"
 ```
 
 ### Complex Tasks
 ```bash
 # Trip planning
-python Streamlined_Agents/app.py "Plan a 5-day Japan trip by Nov 15"
+python agents/app.py "Plan a 5-day Japan trip by Nov 15"
 
 # Event organization
-python Streamlined_Agents/app.py "Organize team retreat by December 1st"
+python agents/app.py "Organize team retreat by December 1st"
 
 # Project planning
-python Streamlined_Agents/app.py "Launch new product by end of month"
+python agents/app.py "Launch new product by end of month"
 ```
 
 ## What Happens
@@ -61,20 +61,20 @@ Events will have notes like:
 View all events in the database:
 
 ```bash
-python Streamlined_Agents/app.py --list
+python agents/app.py --list
 ```
 
 ## Delete Events
 
 ```bash
 # Delete a task by ID (cascade if parent)
-python Streamlined_Agents/app.py --delete <task_id>
+python agents/app.py --delete <task_id>
 
 # Delete all children of a parent task
-python Streamlined_Agents/app.py --delete-parent <parent_id>
+python agents/app.py --delete-parent <parent_id>
 
 # Delete all events (requires confirmation)
-python Streamlined_Agents/app.py --delete-all
+python agents/app.py --delete-all
 ```
 
 ## Troubleshooting
@@ -93,6 +93,6 @@ ollama serve
 
 **Need help?**
 ```bash
-python Streamlined_Agents/app.py --help
+python agents/app.py --help
 ```
 

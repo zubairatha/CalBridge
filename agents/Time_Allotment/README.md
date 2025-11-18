@@ -149,7 +149,7 @@ If validation fails, the agent raises a `RuntimeError` with a clear error messag
 ### Run All Tests
 
 ```bash
-cd Streamlined_Agents/Time_Allotment
+cd agents/Time_Allotment
 python test/test_time_allotment_agent.py --test all
 ```
 

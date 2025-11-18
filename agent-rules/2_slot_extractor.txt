@@ -1,0 +1,174 @@
+# Slot Extractor — What to Extract (NO normalization)
+
+**Output contract (STRICT JSON):**
+
+* Keys: `start_text`, `end_text`, `duration`
+* Values: each is **string or `null`**.
+* It is **OK (and preferred)** to return `null` when something is not present or unclear. Do **not** invent values.
+* Preserve the user’s phrasing (e.g., `"tomorrow"`, `"Friday 2pm"`, `"Nov 15"`, `"EOM"`, `"6pm"`, `"in 2 hours"`).
+* No absolute dates/times, no ISO, no defaults, no normalization.
+
+```json
+{"start_text": string|null, "end_text": string|null, "duration": string|null}
+```
+
+> You (the app) will infer `mode` downstream from presence/absence:
+>
+> * start & end → range/deadline window
+> * end only → deadline
+> * start only → start-only
+> * duration only → duration-only
+> * all null → none
+
+---
+
+## Detection Rules
+
+### 1) **Duration** (metadata only)
+
+Extract when any duration phrase is present (keep as-is):
+
+* Forms: `for <N><unit>`, `for <N> <unit>`, `<N><unit>`, `<N> <unit>`, compounds like `2h30m`, `1.5h`, `90m`
+* Units: `m|min|mins|minute|minutes|h|hr|hrs|hour|hours`
+* Phrases: “for half an hour”, “for an hour”, “take 45 minutes”
+* **Not duration:** phone numbers, prices, counts (“buy 2 apples”), IDs.
+* If multiple durations, keep the one tied to the main action (closest to the action verb).
+
+**Examples → duration**
+
+* “for 45m” → `"45m"`
+* “2h30m” → `"2h30m"`
+* “take 1.5h” → `"1.5h"`
+
+---
+
+### 2) **End (deadline or range-end)** → `end_text`
+
+Mark **end_text** if either of these:
+
+**A) Deadline markers (no explicit range needed)**
+
+* Keywords: **by**, **before**, **no later than**, **due**, **deadline**, **at the latest**, **by EOD/EOW/EOM**, **end of day/week/month**
+* “until <time/date>” **without** a clear start ⇒ treat as deadline
+* “through <date/time>” **without** “from” ⇒ deadline
+* Put the phrase **after** the marker into `end_text`.
+
+**Examples → end_text (deadline)**
+
+* “by Nov 15” → `"Nov 15"`
+* “no later than Friday 5pm” → `"Friday 5pm"`
+* “due tomorrow” → `"tomorrow"`
+* “until 6” (no start) → `"6"`
+* “by EOM” / “end of month” → `"EOM"` / `"end of month"`
+
+**B) Explicit range joiners (capture the end side)**
+
+* Joiners: **from X to Y**, **between X and Y**, **X–Y / X - Y**, **X through Y**, **start … until Y** (when a start exists)
+* Extract **both** sides; right/second goes to `end_text`.
+
+**Examples → end_text (range end)**
+
+* “from 2 to 4 Friday” → end_text: `"Friday 4"`
+* “between 10am and noon” → end_text: `"noon"`
+* “start at 9, until 11” → end_text: `"11"`
+
+If no convincing deadline/range-end is present, **set `end_text` to `null`.**
+
+---
+
+### 3) **Start (when-to-begin anchor)** → `start_text`
+
+Mark **start_text** when you see a start cue (not a pure deadline-only phrase):
+
+**A) Relative/vague anchors**
+
+* Words: **today**, **tomorrow**, **tonight**, **this <period>**, **next <period/week>**, **next <weekday>**
+* Periods: **morning**, **afternoon**, **evening**, **night/tonight**, **weekend**, **next week**
+* Examples: “tomorrow 9am”, “this afternoon”, “next week”, “weekend”
+
+**B) Specific dates/times without deadline words**
+
+* Month names/dates: “Nov 15”, “November 15 3pm”
+* Numeric dates: “11/15”, “15/11” (don’t normalize)
+* Bare times: “at 6”, “6pm”, “11”
+* Weekdays: “Friday”, “this Friday 2pm”, “next Friday”
+
+**C) Start verbs**
+
+* “from 3”, “starting tomorrow”, “begin at noon”, “start Friday”
+
+**D) “in <X time>” offsets**
+
+* “in 2 hours”, “in 15 minutes”, “in a couple of hours” → **start_text** (not duration)
+
+If no convincing start cue is present, **set `start_text` to `null`.**
+
+---
+
+## Ambiguity & Tie-breakers
+
+* **Both start cue and deadline present (no explicit range joiner):**
+
+  * Fill **both**: `start_text` with the start cue, `end_text` with the deadline phrase.
+  * Example: “start next week, finish by end of month” → `start_text="next week"`, `end_text="end of month"`.
+
+* **“until <time>”**
+
+  * If a clear start cue exists (“start at 2, until 4”) → treat as range: `start_text="2"`, `end_text="4"`.
+  * If **no** start cue → treat as deadline: `end_text="<time>"`, `start_text=null`.
+
+* **Multiple candidate phrases**
+
+  * Choose the one most closely tied to the main action verb.
+  * If multiple start cues exist (e.g., “start tomorrow morning or Friday”), pick the earliest *mentioned* one; leave others unfilled (don’t list alternatives).
+
+* **Non-time numbers**
+
+  * If a number is clearly not a time/duration, ignore it (don’t put it in any field).
+
+* **When unsure**
+
+  * Prefer **`null`** over guessing. It is acceptable and expected to return:
+
+    ```json
+    {"start_text":null,"end_text":null,"duration":null}
+    ```
+
+---
+
+## Practical Detection Order (for consistent behavior)
+
+1. **Look for explicit range joiners** (from/between/–/through/… until … with start) → set **both** `start_text` and `end_text`.
+2. **Scan for deadline markers** (by/before/due/no later than/EOD/EOW/EOM/“until” w/o start) → set `end_text`.
+3. **Scan for start cues** (relative words, weekdays, bare times, specific dates, “in X time”, start/begin) → set `start_text`.
+4. **Scan for duration** phrases → set `duration`.
+5. If none found → set all to **`null`**.
+
+---
+
+## Quick sanity examples (all valid; note the use of `null`)
+
+* “call mom **tomorrow**”
+  → `{"start_text":"tomorrow","end_text":null,"duration":null}`
+
+* “send report **by Friday 5pm**”
+  → `{"start_text":null,"end_text":"Friday 5pm","duration":null}`
+
+* “**from 10 to 1**”
+  → `{"start_text":"10","end_text":"1","duration":null}`
+
+* “**study for 45m at 6pm**”
+  → `{"start_text":"6pm","end_text":null,"duration":"45m"}`
+
+* “start **next week**, finish **by EOM**”
+  → `{"start_text":"next week","end_text":"EOM","duration":null}`
+
+* “work **until 4**” (no start)
+  → `{"start_text":null,"end_text":"4","duration":null}`
+
+* “ping Alex about the doc” (no time info)
+  → `{"start_text":null,"end_text":null,"duration":null}`
+
+---
+
+**Bottom line:** The Slot Extractor **only** decides whether the utterance contains a **start_text**, an **end_text**, and/or a **duration**. If any are missing or ambiguous, **return `null`** for that field.

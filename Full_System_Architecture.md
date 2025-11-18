@@ -145,7 +145,7 @@ JSON
 
 note: parent_id for all simple tasks is null; id is randomly-generated
 
-1) TYPE=COMPLEX
+2) TYPE=COMPLEX
 
 ### Input:
 

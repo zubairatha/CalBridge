@@ -48,119 +48,119 @@ A LangGraph-based agent system for processing natural language queries and extra
 
 ### Full Pipeline Test (UQ → SE → AR → TS)
 ```bash
-cd /Users/zubair/Desktop/Dev/calendar-test && source .venv/bin/activate && python Streamlined_Agents/test/test_full_pipeline_with_ts.py "your query here"
+cd /Users/zubair/Desktop/Dev/calendar-test && source .venv/bin/activate && python agents/test/test_full_pipeline_with_ts.py "your query here"
 ```
 
 ### Full Pipeline Test with TD (UQ → SE → AR → TS → TD)
 ```bash
-cd /Users/zubair/Desktop/Dev/calendar-test && source .venv/bin/activate && python Streamlined_Agents/test/test_full_pipeline_with_td.py "your query here"
+cd /Users/zubair/Desktop/Dev/calendar-test && source .venv/bin/activate && python agents/test/test_full_pipeline_with_td.py "your query here"
 ```
 
 ### Full Pipeline Test with LD (UQ → SE → AR → TS → TD → LD)
 ```bash
-cd /Users/zubair/Desktop/Dev/calendar-test && source .venv/bin/activate && python Streamlined_Agents/test/test_full_pipeline_with_ld.py "your query here"
+cd /Users/zubair/Desktop/Dev/calendar-test && source .venv/bin/activate && python agents/test/test_full_pipeline_with_ld.py "your query here"
 ```
 
 ### Interactive Pipeline Mode
 ```bash
-cd /Users/zubair/Desktop/Dev/calendar-test && source .venv/bin/activate && python Streamlined_Agents/test/test_full_pipeline_with_ts.py --interactive
+cd /Users/zubair/Desktop/Dev/calendar-test && source .venv/bin/activate && python agents/test/test_full_pipeline_with_ts.py --interactive
 ```
 
 ### Test Multiple Examples
 ```bash
-cd /Users/zubair/Desktop/Dev/calendar-test && source .venv/bin/activate && python Streamlined_Agents/test/test_full_pipeline_with_ts.py --multiple
+cd /Users/zubair/Desktop/Dev/calendar-test && source .venv/bin/activate && python agents/test/test_full_pipeline_with_ts.py --multiple
 ```
 
 ### Test Specific Scenarios
 ```bash
-cd /Users/zubair/Desktop/Dev/calendar-test && source .venv/bin/activate && python Streamlined_Agents/test/test_full_pipeline_with_ts.py --scenarios
+cd /Users/zubair/Desktop/Dev/calendar-test && source .venv/bin/activate && python agents/test/test_full_pipeline_with_ts.py --scenarios
 ```
 
 ### Test Individual Components
 
 #### Slot Extractor Only
 ```bash
-cd /Users/zubair/Desktop/Dev/calendar-test && source .venv/bin/activate && python Streamlined_Agents/test/test_slot_extractor.py "your query here"
+cd /Users/zubair/Desktop/Dev/calendar-test && source .venv/bin/activate && python agents/test/test_slot_extractor.py "your query here"
 ```
 
 #### Absolute Resolver Only
 ```bash
-cd /Users/zubair/Desktop/Dev/calendar-test && source .venv/bin/activate && python Streamlined_Agents/test/test_absolute_resolver.py --test
+cd /Users/zubair/Desktop/Dev/calendar-test && source .venv/bin/activate && python agents/test/test_absolute_resolver.py --test
 ```
 
 #### Time Standardizer Only
 ```bash
-cd /Users/zubair/Desktop/Dev/calendar-test && source .venv/bin/activate && python Streamlined_Agents/test/test_time_standardizer.py --test
+cd /Users/zubair/Desktop/Dev/calendar-test && source .venv/bin/activate && python agents/test/test_time_standardizer.py --test
 ```
 
 #### Time Standardizer Edge Cases
 ```bash
-cd /Users/zubair/Desktop/Dev/calendar-test && source .venv/bin/activate && python Streamlined_Agents/test/test_time_standardizer.py --edge
+cd /Users/zubair/Desktop/Dev/calendar-test && source .venv/bin/activate && python agents/test/test_time_standardizer.py --edge
 ```
 
 #### Time Standardizer Interactive
 ```bash
-cd /Users/zubair/Desktop/Dev/calendar-test && source .venv/bin/activate && python Streamlined_Agents/test/test_time_standardizer.py --interactive
+cd /Users/zubair/Desktop/Dev/calendar-test && source .venv/bin/activate && python agents/test/test_time_standardizer.py --interactive
 ```
 
 #### Task Difficulty Analyzer
 ```bash
-cd /Users/zubair/Desktop/Dev/calendar-test && source .venv/bin/activate && python Streamlined_Agents/test/test_task_difficulty_analyzer.py --basic
+cd /Users/zubair/Desktop/Dev/calendar-test && source .venv/bin/activate && python agents/test/test_task_difficulty_analyzer.py --basic
 ```
 
 #### Task Difficulty Analyzer - All Tests
 ```bash
-cd /Users/zubair/Desktop/Dev/calendar-test && source .venv/bin/activate && python Streamlined_Agents/test/test_task_difficulty_analyzer.py --all
+cd /Users/zubair/Desktop/Dev/calendar-test && source .venv/bin/activate && python agents/test/test_task_difficulty_analyzer.py --all
 ```
 
 #### Task Difficulty Analyzer - Interactive
 ```bash
-cd /Users/zubair/Desktop/Dev/calendar-test && source .venv/bin/activate && python Streamlined_Agents/test/test_task_difficulty_analyzer.py --interactive
+cd /Users/zubair/Desktop/Dev/calendar-test && source .venv/bin/activate && python agents/test/test_task_difficulty_analyzer.py --interactive
 ```
 
 #### Full Pipeline with TD - Multiple Examples
 ```bash
-cd /Users/zubair/Desktop/Dev/calendar-test && source .venv/bin/activate && python Streamlined_Agents/test/test_full_pipeline_with_td.py --multiple
+cd /Users/zubair/Desktop/Dev/calendar-test && source .venv/bin/activate && python agents/test/test_full_pipeline_with_td.py --multiple
 ```
 
 #### Full Pipeline with TD - Interactive
 ```bash
-cd /Users/zubair/Desktop/Dev/calendar-test && source .venv/bin/activate && python Streamlined_Agents/test/test_full_pipeline_with_td.py --interactive
+cd /Users/zubair/Desktop/Dev/calendar-test && source .venv/bin/activate && python agents/test/test_full_pipeline_with_td.py --interactive
 ```
 
 #### Full Pipeline with TD - Scenarios
 ```bash
-cd /Users/zubair/Desktop/Dev/calendar-test && source .venv/bin/activate && python Streamlined_Agents/test/test_full_pipeline_with_td.py --scenarios
+cd /Users/zubair/Desktop/Dev/calendar-test && source .venv/bin/activate && python agents/test/test_full_pipeline_with_td.py --scenarios
 ```
 
 #### LLM Decomposer
 ```bash
-cd /Users/zubair/Desktop/Dev/calendar-test && source .venv/bin/activate && python Streamlined_Agents/test/test_llm_decomposer.py --basic
+cd /Users/zubair/Desktop/Dev/calendar-test && source .venv/bin/activate && python agents/test/test_llm_decomposer.py --basic
 ```
 
 #### LLM Decomposer - All Tests
 ```bash
-cd /Users/zubair/Desktop/Dev/calendar-test && source .venv/bin/activate && python Streamlined_Agents/test/test_llm_decomposer.py --all
+cd /Users/zubair/Desktop/Dev/calendar-test && source .venv/bin/activate && python agents/test/test_llm_decomposer.py --all
 ```
 
 #### LLM Decomposer - Interactive
 ```bash
-cd /Users/zubair/Desktop/Dev/calendar-test && source .venv/bin/activate && python Streamlined_Agents/test/test_llm_decomposer.py --interactive
+cd /Users/zubair/Desktop/Dev/calendar-test && source .venv/bin/activate && python agents/test/test_llm_decomposer.py --interactive
 ```
 
 #### Full Pipeline with LD - Multiple Examples
 ```bash
-cd /Users/zubair/Desktop/Dev/calendar-test && source .venv/bin/activate && python Streamlined_Agents/test/test_full_pipeline_with_ld.py --multiple
+cd /Users/zubair/Desktop/Dev/calendar-test && source .venv/bin/activate && python agents/test/test_full_pipeline_with_ld.py --multiple
 ```
 
 #### Full Pipeline with LD - Simple vs Complex
 ```bash
-cd /Users/zubair/Desktop/Dev/calendar-test && source .venv/bin/activate && python Streamlined_Agents/test/test_full_pipeline_with_ld.py --simple-vs-complex
+cd /Users/zubair/Desktop/Dev/calendar-test && source .venv/bin/activate && python agents/test/test_full_pipeline_with_ld.py --simple-vs-complex
 ```
 
 #### Full Pipeline with LD - Interactive
 ```bash
-cd /Users/zubair/Desktop/Dev/calendar-test && source .venv/bin/activate && python Streamlined_Agents/test/test_full_pipeline_with_ld.py --interactive
+cd /Users/zubair/Desktop/Dev/calendar-test && source .venv/bin/activate && python agents/test/test_full_pipeline_with_ld.py --interactive
 ```
 
 ## Configuration
@@ -198,20 +198,20 @@ The Event Creator Agent uses a SQLite database (`event_creator.db`) to track all
 ### List Events
 
 ```bash
-python Streamlined_Agents/app.py --list
+python agents/app.py --list
 ```
 
 ### Delete Events
 
 ```bash
 # Delete a task by ID (cascade if parent)
-python Streamlined_Agents/app.py --delete <task_id>
+python agents/app.py --delete <task_id>
 
 # Delete all children of a parent task
-python Streamlined_Agents/app.py --delete-parent <parent_id>
+python agents/app.py --delete-parent <parent_id>
 
 # Delete all events (requires confirmation)
-python Streamlined_Agents/app.py --delete-all
+python agents/app.py --delete-all
 ```
 
 **Note**: All delete operations remove events from both the calendar (via CalBridge API) and the database.

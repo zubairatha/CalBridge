@@ -1,0 +1,208 @@
+# LLM Decomposer (LD) — Spec
+
+## Purpose
+
+For **complex** tasks (as flagged by TD), produce at most **5** clear subtasks with smart, bounded durations in the **standard duration format** you already chose (ISO-8601: `PT…`). The LLM only decomposes; your code will merge metadata.
+
+## Inputs
+
+* **TD.output** (only when `TD.type == "complex"`):
+
+  ```json
+  {
+    "calendar": "<id>",
+    "type": "complex",
+    "title": "<task title>",
+    "duration": null
+  }
+  ```
+
+  (Per TD, complex implies `duration` is `null`.)
+
+## Output (STRICT JSON from the LLM, before merge)
+
+```json
+{
+  "subtasks": [
+    { "title": "<short imperative>", "duration": "PT..." },
+    ...
+  ]
+}
+```
+
+* Your **post-processing code** will wrap with:
+
+  ```json
+  {
+    "calendar": "<id>",
+    "type": "complex",
+    "title": "<task title>",
+    "subtasks": [ ... ]   // from LLM
+  }
+  ```
+
+---
+
+## Hard Constraints
+
+* **Max subtasks:** 5 (min 2 recommended for “complex”).
+* **Per-subtask duration cap:** **≤ PT3H**.
+* **Duration format:** ISO-8601 only (`PT30M`, `PT1H`, `PT2H30M`, …).
+* **No dates/times.** Only titles + durations.
+* **No sub-subtasks, no bullets, no prose—JSON only.**
+* Each subtask must be independently schedulable (an atomic block).
+* Prefer **15–60 minute** granularity (e.g., `PT45M`, `PT1H30M`), unless the work clearly warrants up to 3h.
+
+---
+
+## Decomposition Rules
+
+### 1) Structure the work into phases
+
+Use a simple, top-down pattern; pick the phases that fit the task:
+
+* **Plan / Research / Gather** (inputs, references, data)
+* **Outline / Draft / Design** (structure, skeleton, wireframe)
+* **Build / Write / Implement** (main execution)
+* **Review / Test / Polish** (self-review, QA, revise)
+* **Finalize / Package / Submit** (export, share, send)
+
+Choose 2–5 phases that make sense; skip irrelevant ones.
+
+### 2) Titles
+
+* **Imperative** and **outcome-focused** (3–7 words).
+* Include the object; avoid filler (“please”, “ASAP”).
+* Examples: “Research background sources”, “Draft proposal outline”, “Write method section”, “Self-review and edits”, “Export and submit PDF”.
+
+### 3) Durations (smart assignment)
+
+* Start conservative; default to **PT45M–PT1H30M** per subtask unless the step clearly needs more.
+* Never exceed **PT3H** for any subtask.
+* If uncertainty is high, spread into more, smaller blocks (e.g., 4×`PT1H` instead of 2×`PT2H`).
+* **Do not** try to sum to a global duration (there isn’t one for complex tasks here).
+* Prefer **varied durations** that match the step’s heft (e.g., research may be longer than packaging).
+
+### 4) Dependencies & order
+
+* Output subtasks in **execution order** (what should be done first to last).
+* Each subtask should be executable without completing later ones.
+* If a step depends on inputs (requirements/assets), ensure a preceding subtask gathers them.
+
+### 5) Scope control
+
+* Avoid micro-tasks like “Open Google Docs.”
+* Avoid mega-tasks like “Write full proposal end-to-end in one block.”
+* Use 2–5 blocks that a human could realistically book on a calendar.
+
+### 6) Domain sensitivity
+
+* **Work deliverables**: include at least one review/refinement step.
+* **Home/personal complex** (e.g., “plan trip”, “prepare taxes”): include “gather info,” “compare options,” “decide & book/prepare,” “review & finalize.”
+
+### 7) When the input is borderline
+
+* If the “complex” title still feels atomic, decompose into **at least 2** steps: a quick “plan/outline” and a “do/finalize” block.
+
+---
+
+## Formatting & Validation
+
+* **Return STRICT JSON only**:
+
+  ```json
+  {
+    "subtasks": [
+      {"title":"...", "duration":"PT..."},
+      ...
+    ]
+  }
+  ```
+* Ensure:
+
+  * `2 <= len(subtasks) <= 5`
+  * Every `duration` is valid ISO-8601 (`PT#H#M` with integers; allow `PT30M`, `PT2H`, `PT2H30M`).
+  * Every `duration` ≤ `PT3H`.
+  * Titles have no time/dates/due words.
+* If the LLM can’t decompose meaningfully: still produce **2 small blocks** (plan + do) with safe durations (e.g., `PT45M`, `PT1H`).
+
+---
+
+## Few-Shot Examples
+
+1. **Work — “Draft project proposal”**
+
+```json
+{
+  "subtasks": [
+    {"title":"Research background and inputs","duration":"PT1H30M"},
+    {"title":"Create proposal outline","duration":"PT45M"},
+    {"title":"Write key sections","duration":"PT2H"},
+    {"title":"Self-review and revise","duration":"PT1H"},
+    {"title":"Export and share proposal","duration":"PT30M"}
+  ]
+}
+```
+
+2. **Home — “Plan 5-day Japan trip”**
+
+```json
+{
+  "subtasks": [
+    {"title":"List must-see cities and dates","duration":"PT1H"},
+    {"title":"Compare flights and book","duration":"PT2H"},
+    {"title":"Draft day-by-day itinerary","duration":"PT1H30M"},
+    {"title":"Book lodging and passes","duration":"PT2H"},
+    {"title":"Finalize budget and checklist","duration":"PT45M"}
+  ]
+}
+```
+
+3. **Work — “Prepare onboarding plan”**
+
+```json
+{
+  "subtasks": [
+    {"title":"Gather role requirements","duration":"PT1H"},
+    {"title":"Draft 30-60-90 plan","duration":"PT1H30M"},
+    {"title":"Create learning resources list","duration":"PT1H"},
+    {"title":"Review and refine with notes","duration":"PT1H"},
+    {"title":"Package and share plan","duration":"PT30M"}
+  ]
+}
+```
+
+---
+
+## Post-processing (your code)
+
+* Merge LLM’s JSON into the final envelope:
+
+  ```json
+  {
+    "calendar":"<id from TD>",
+    "type":"complex",
+    "title":"<title from TD>",
+    "subtasks":[ ... ]   // from LLM
+  }
+  ```
+* Validate constraints again (count, ISO-8601 duration, ≤ PT3H).
+* If invalid, either:
+
+  * auto-shrink durations to cap at `PT3H` and/or
+  * trim excess subtasks beyond 5 (keep first 5),
+  * or ask the LLM to regenerate (optional).
+
+---
+
+## Inference Settings (recommended)
+
+* Low temperature (~0.3).
+* JSON-only output enforcement.
+* Max tokens ~384 to keep outputs compact.
+
+**TL;DR**
+
+* Input: a **complex** task → Output: **2–5** ordered subtasks, each with an **ISO-8601** duration **≤ PT3H**.
+* Titles imperative; durations sensible; no dates.
+* Your code merges calendar/type/title and validates caps.

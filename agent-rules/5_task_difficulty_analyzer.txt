@@ -1,0 +1,180 @@
+# Task Difficulty Analyzer (TD) — Spec (Work/Home only)
+
+## Purpose
+
+Classify a task as **simple** or **complex**, choose **Work** or **Home** calendar **by querying CalBridge**, and produce a short **title**. **Do not** modify `duration`.
+
+## Inputs
+
+* **UQ**: user utterance (string)
+* **TS.duration**: `"PT..."` or `null` (from Time Standardizer; pass through unchanged)
+* **CalBridge API**: must be called to fetch calendars (titles/ids/writable)
+
+## Output (STRICT JSON)
+
+```json
+{
+  "calendar": "<calendar_id>",        // must be the id returned by CalBridge
+  "type": "simple" | "complex",
+  "title": "<short imperative title>",
+  "duration": "PT..." | null
+}
+```
+
+Return **only** the JSON object. `duration` must be **identical** to input.
+
+---
+
+## Required Calendar Lookup (CalBridge)
+
+1. **Fetch calendars** via CalBridge.
+2. Find **one “Work”** and **one “Home”** calendar by **title match** (case-insensitive, allow exact match on `work` / `home`; prefer `writable=true`).
+3. **If multiple** matches for a type: pick the **first writable** with exact title `"Work"`/`"Home"`; else the first writable containing the keyword.
+4. **If only one of Work/Home exists**, you may still return that one (see selection rules below).
+5. **If neither exists**, return an **error state** upstream (or a sentinel like `"calendar": null`)—do **not** invent ids.
+
+---
+
+## Type Classification Rules
+
+### A. Duration shortcut
+
+* If `TS.duration != null` → **type = "simple"**.
+
+### B. Simple (when `TS.duration == null`)
+
+Mark **simple** if it is a **single, atomic action** finishable in one sitting:
+
+* clear verb + object: “call mom”, “send invoice”, “book dentist”, “pay rent”
+* quick work actions not implying coordination or research: “email NDA”, “submit expense”, “merge approved PR”
+* personal errands/chores with narrow scope: “buy milk”, “pick up package”, “laundry”
+
+### C. Complex (when `TS.duration == null`)
+
+Mark **complex** if two or more signals (or any strong signal) appear:
+
+* multi-step phrasing: “plan”, “research and write”, “draft then revise”, “gather requirements”
+* composite deliverables: “proposal”, “report”, “deck”, “architecture”, “analysis”, “onboarding plan”
+* coordination/dependencies: “with team”, “get approvals”, “collect feedback”
+* open-ended/ambiguous: “explore”, “investigate”, “prototype”, “compare vendors”
+* broad scope/plural/big area: “organize files”, “clean apartment”, “refactor module”, “prepare taxes”, “plan trip”
+* time-horizon/meta: “this week/month/quarter”, “roadmap”, “milestones”
+
+**Borderline?** If atomic → simple; if not clearly atomic → complex (so the Decomposer can help).
+
+---
+
+## Calendar Selection Rules (Work vs Home)
+
+After fetching calendars from CalBridge and resolving their ids:
+
+1. **Default mapping by domain keywords in UQ (case-insensitive):**
+
+   * **Work** if UQ contains work-ish tokens:
+     `client, manager, team, meeting, deck, proposal, report, PRD, sprint, code, repo, deploy, invoice, expense, contract, NDA, design, marketing, sales, finance, legal, roadmap, OKR`
+   * **Home** if UQ contains personal-ish tokens:
+     `mom, dad, family, friend, groceries, laundry, gym, workout, dentist, doctor, birthday, rent, clean, apartment, house, travel (personal), visa (personal), taxes (personal)`
+
+2. **If both Work and Home calendars exist:**
+
+   * Use the **Work list** above to choose Work; else if matched by Home list choose Home.
+   * If the UQ matches **both** sets (rare), prefer **Work** for professional deliverables (proposal/deck/report/meeting), else **Home** for people/errands/health.
+
+3. **If only one exists** (e.g., only Work or only Home in CalBridge):
+
+   * Return that one—don’t fail.
+
+4. **If neither exists**:
+
+   * Return an **error state** upstream (no invented ids). Your caller should handle provisioning.
+
+---
+
+## Title Generation Rules
+
+* Short, **imperative**, concrete (3–7 words).
+* `verb + object`; remove time/deadlines/duration and filler (“please”, “ASAP”).
+* No emojis, minimal punctuation.
+* Examples: “Call mom”, “Send invoice to Acme”, “Draft project proposal”, “Buy groceries”.
+
+---
+
+## Constraints
+
+* **Return STRICT JSON only.**
+* **Do not** edit or reformat `duration`; pass it **as-is**.
+* Do **not** add time info or alter dates.
+* Must **use CalBridge** to find `"Work"` / `"Home"` calendar ids.
+
+---
+
+## Few-shot Examples
+
+1. **Simple via duration; Home**
+
+* UQ: “call mom tomorrow for 20 minutes”
+* TS.duration: `"PT20M"`
+* CalBridge calendars: Work (id: `work_1`, writable), Home (id: `home_1`, writable)
+  **Output**
+
+```json
+{"calendar":"home_1","type":"simple","title":"Call mom","duration":"PT20M"}
+```
+
+2. **Complex work deliverable**
+
+* UQ: “finish project proposal by Nov 15”
+* TS.duration: null
+* Calendars: Work (id: `work_1`, writable), Home (id: `home_1`, writable)
+  **Output**
+
+```json
+{"calendar":"work_1","type":"complex","title":"Draft project proposal","duration":null}
+```
+
+3. **Simple atomic work action**
+
+* UQ: “send the signed NDA to the client”
+* TS.duration: null
+* Calendars: Work only (id: `work_1`, writable)
+  **Output**
+
+```json
+{"calendar":"work_1","type":"simple","title":"Send signed NDA","duration":null}
+```
+
+4. **Personal simple**
+
+* UQ: “buy groceries and fruits”
+* TS.duration: null
+* Calendars: Work (id: `work_1`, writable), Home (id: `home_1`, writable)
+  **Output**
+
+```json
+{"calendar":"home_1","type":"simple","title":"Buy groceries","duration":null}
+```
+
+5. **Ambiguous phrasing → complex (no duration, composite)**
+
+* UQ: “prepare onboarding plan for new hire”
+* TS.duration: null
+* Calendars: Work (id: `work_1`, writable), Home (id: `home_1`, writable)
+  **Output**
+
+```json
+{"calendar":"work_1","type":"complex","title":"Prepare onboarding plan","duration":null}
+```
+
+---
+
+## Inference Settings (recommended)
+
+* Low temperature (~0.2), JSON-only output enforcement.
+* Keep responses concise; 256 tokens is plenty.
+
+**TL;DR**
+
+* **Always** fetch calendars via **CalBridge** and map to **Work/Home**.
+* `duration != null` ⇒ **simple**; else decide **atomic vs multi-step**.
+* Choose **Work** for professional keywords/deliverables; **Home** for personal/errands/people/health.
+* Generate a short imperative **title**; pass `duration` through unchanged.

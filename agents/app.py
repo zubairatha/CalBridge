@@ -401,7 +401,7 @@ Examples:
     parser.add_argument(
         "--db-path",
         "-d",
-        help="Path to Event Creator database (default: event_creator.db in Streamlined_Agents/)"
+        help="Path to Event Creator database (default: event_creator.db in agents/)"
     )
     
     parser.add_argument(

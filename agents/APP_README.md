@@ -9,13 +9,13 @@ A complete CLI application that processes natural language queries through an 8-
 ```bash
 cd /Users/zubair/Desktop/Dev/calendar-test
 source .venv/bin/activate
-python Streamlined_Agents/app.py "Call mom tomorrow at 2pm for 30 minutes"
+python agents/app.py "Call mom tomorrow at 2pm for 30 minutes"
 ```
 
 ### Interactive Mode
 
 ```bash
-python Streamlined_Agents/app.py --interactive
+python agents/app.py --interactive
 ```
 
 This will prompt you for queries continuously until you type 'quit' or 'exit'.
@@ -36,7 +36,7 @@ This will prompt you for queries continuously until you type 'quit' or 'exit'.
 ## Command Line Options
 
 ```bash
-python Streamlined_Agents/app.py [QUERY] [OPTIONS]
+python agents/app.py [QUERY] [OPTIONS]
 ```
 
 ### Arguments
@@ -61,7 +61,7 @@ python Streamlined_Agents/app.py [QUERY] [OPTIONS]
 ### Simple Task
 
 ```bash
-python Streamlined_Agents/app.py "Call mom tomorrow at 2pm for 30 minutes"
+python agents/app.py "Call mom tomorrow at 2pm for 30 minutes"
 ```
 
 **Output:**
@@ -72,7 +72,7 @@ python Streamlined_Agents/app.py "Call mom tomorrow at 2pm for 30 minutes"
 ### Complex Task
 
 ```bash
-python Streamlined_Agents/app.py "Plan a 5-day Japan trip by Nov 15"
+python agents/app.py "Plan a 5-day Japan trip by Nov 15"
 ```
 
 **Output:**
@@ -83,19 +83,19 @@ python Streamlined_Agents/app.py "Plan a 5-day Japan trip by Nov 15"
 ### Custom Timezone
 
 ```bash
-python Streamlined_Agents/app.py "Review proposal next Monday" --timezone "America/Los_Angeles"
+python agents/app.py "Review proposal next Monday" --timezone "America/Los_Angeles"
 ```
 
 ### JSON Output
 
 ```bash
-python Streamlined_Agents/app.py "Call dentist tomorrow at 10am" --json
+python agents/app.py "Call dentist tomorrow at 10am" --json
 ```
 
 ### List All Events
 
 ```bash
-python Streamlined_Agents/app.py --list
+python agents/app.py --list
 ```
 
 **Output:**
@@ -108,13 +108,13 @@ python Streamlined_Agents/app.py --list
 
 ```bash
 # Delete a task by ID (cascade if parent)
-python Streamlined_Agents/app.py --delete <task_id>
+python agents/app.py --delete <task_id>
 
 # Delete all children of a parent task
-python Streamlined_Agents/app.py --delete-parent <parent_id>
+python agents/app.py --delete-parent <parent_id>
 
 # Delete all events (requires confirmation)
-python Streamlined_Agents/app.py --delete-all
+python agents/app.py --delete-all
 ```
 
 **Delete Operations:**
@@ -125,7 +125,7 @@ python Streamlined_Agents/app.py --delete-all
 ### Interactive Mode
 
 ```bash
-python Streamlined_Agents/app.py --interactive
+python agents/app.py --interactive
 ```
 
 Then enter queries one by one:
@@ -210,7 +210,7 @@ curl http://localhost:11434/api/tags
 
 If the Event Creator database has issues, you can specify a custom path:
 ```bash
-python Streamlined_Agents/app.py "Your query" --db-path /path/to/custom.db
+python agents/app.py "Your query" --db-path /path/to/custom.db
 ```
 
 ## Integration
@@ -218,7 +218,7 @@ python Streamlined_Agents/app.py "Your query" --db-path /path/to/custom.db
 The application can be integrated into other systems:
 
 ```python
-from Streamlined_Agents.app import PipelineOrchestrator
+from agents.app import PipelineOrchestrator
 
 orchestrator = PipelineOrchestrator()
 result = orchestrator.run_pipeline("Your query here", timezone="America/New_York")
@@ -232,8 +232,8 @@ if result["success"]:
 
 - `app.py`: Main application file
 - `APP_README.md`: This file
-- All agent files in `Streamlined_Agents/`
-- Test files in `Streamlined_Agents/test/`
+- All agent files in `agents/`
+- Test files in `agents/test/`
 
 ## Database Management
 
@@ -245,20 +245,20 @@ The application uses a SQLite database (`event_creator.db`) to track all tasks a
 ### List Events
 
 ```bash
-python Streamlined_Agents/app.py --list
+python agents/app.py --list
 ```
 
 ### Delete Events
 
 ```bash
 # Delete a single task (cascade if parent)
-python Streamlined_Agents/app.py --delete <task_id>
+python agents/app.py --delete <task_id>
 
 # Delete all children of a parent task
-python Streamlined_Agents/app.py --delete-parent <parent_id>
+python agents/app.py --delete-parent <parent_id>
 
 # Delete all events (requires confirmation)
-python Streamlined_Agents/app.py --delete-all
+python agents/app.py --delete-all
 ```
 
 **Note**: All delete operations remove events from both the calendar (via CalBridge API) and the database.

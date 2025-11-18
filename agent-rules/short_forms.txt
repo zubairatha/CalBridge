@@ -1,0 +1,8 @@
+UQ: User Query
+SE: Slot Extractor Agent
+AR: Absolute Resolver Agent
+TS: Time Standardizer Agent
+TD: Task Difficulty Analyzer
+LD: LLM Decomposer
+TA: Time Allotment Agent
+EC: Event Creator

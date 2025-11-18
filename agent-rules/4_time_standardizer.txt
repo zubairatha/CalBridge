@@ -1,0 +1,237 @@
+# Time Standardizer — Spec
+
+## Purpose
+
+Convert **Absolute Resolver output** (canonical human strings) into strict machine formats, enforce invariants, and surface deterministic results.
+
+## Input
+
+* Absolute Resolver output (**already absolute, no normalization needed**):
+
+  ```json
+  {
+    "start_text": "Month DD, YYYY HH:MM am/pm",
+    "end_text":   "Month DD, YYYY HH:MM am/pm",
+    "duration":   "2h" | "45m" | "2h30m" | "1.5h" | null
+  }
+  ```
+
+  note: sometimes the output from absolute resolver (AR) can be faulty and have ISO format in start_text and end_text. so make sure teh regexes are ready for that.
+* Context:
+
+  * `TIMEZONE` (IANA, e.g., `America/New_York`) — required
+  * (Optional) `NOW_ISO` — only used for logs/debug; should not affect output at this stage
+
+## Output (FINAL)
+
+```json
+{
+  "start": "YYYY-MM-DDThh:mm:ss±hh:mm",
+  "end":   "YYYY-MM-DDThh:mm:ss±hh:mm",
+  "duration": "PT..." | null
+}
+```
+
+---
+
+## Canonical input assumptions (must hold; otherwise error)
+
+* `start_text` and `end_text` **always** use this exact format: `"Month DD, YYYY HH:MM am/pm"`
+
+  * Full month name, zero-padded day `DD`, 12-hour time with zero-padded hour/minute and `am|pm`.
+  * Examples: `"October 24, 2025 02:00 pm"`, `"November 15, 2025 11:59 pm"`.
+* `duration` is **metadata** and must **NOT** shift `start`/`end`.
+
+If any input string breaks the format, mark the standardizer result as **invalid** (or raise a parse error for the caller). Do not guess.
+
+---
+
+## Parsing & conversion rules
+
+1. **Attach timezone**
+
+   * Parse `start_text` and `end_text` with the canonical format and **assign** the provided `TIMEZONE`.
+   * Produce ISO-8601 with numeric offset (e.g., `-04:00` / `-05:00`) respecting DST on those dates.
+
+2. **Seconds policy**
+
+   * If input minute is `:59` **and** text explicitly meant EOD (e.g., Absolute Resolver used `11:59 pm` to denote end-of-day), set seconds to **`59`** → `23:59:59`.
+   * Otherwise set seconds to **`00`**.
+
+3. **Invariant**
+
+   * Enforce `start <= end`. If violated:
+
+     * **Repair** by snapping `end` to **23:59:59** on `start`’s calendar date (same timezone).
+     * Record a note (for logs) like `"repaired end < start → set to end_of_day(start)"`.
+
+4. **No reinterpretation**
+
+   * Do **not** re-infer weekday, “next”, or any semantic shift. Absolute Resolver has already decided the dates.
+
+---
+
+## Duration normalization (ISO-8601)
+
+Convert the free-form `duration` to ISO-8601 or **null**:
+
+* **Minutes**
+
+  * `45m`, `45 m`, `45 min`, `45 mins`, `45 minute(s)` → `PT45M`
+* **Hours**
+
+  * `2h`, `2 h`, `2 hr`, `2 hrs`, `2 hour(s)` → `PT2H`
+* **Hour + minute compounds**
+
+  * `2h30m`, `2 h 30 m`, `2hr 30min`, `2 hours 30 minutes` → `PT2H30M`
+* **Decimals**
+
+  * `1.5h` → `PT1H30M`
+* **Half/An hour phrases** *(only if present; keep strict otherwise)*
+
+  * `half an hour` → `PT30M`
+  * `an hour` / `one hour` → `PT1H`
+* **Anything else / ambiguous** → **`null`** (be strict rather than guessing)
+
+> Remember: duration **does not** modify `start` or `end` here. It’s carried forward for scheduling heuristics.
+
+---
+
+## Safety & validation
+
+* **Reject malformed** canonical strings (e.g., bad month name, wrong casing, missing comma) as parse errors; do not coerce.
+* **Timezone required.** If missing, this step must fail fast rather than assume UTC.
+* **DST correctness.** Use the timezone’s rules on the target dates; offsets can differ between `start` and `end`.
+
+---
+
+## Edge cases & resolutions
+
+* **EOD semantics:** If Absolute Resolver encoded EOD as `11:59 pm`, Time Standardizer sets **`:59` seconds** → `…T23:59:59…`.
+* **Same-minute start/end:** Allowed (zero-length window). Keep as is; don’t stretch unless upstream requires a minimum.
+* **End earlier than start:** Apply the invariant repair (snap to end_of_day(start)).
+* **Leap days / month boundaries:** Honor the parsed absolute dates; no changes.
+
+---
+
+## Examples
+
+Assume `TIMEZONE = America/New_York`.
+
+1. **Deadline only case**
+
+   * Input:
+
+     ```json
+     {
+       "start_text": "October 18, 2025 03:00 pm",
+       "end_text":   "November 15, 2025 11:59 pm",
+       "duration":   "2h"
+     }
+     ```
+   * Output:
+
+     ```json
+     {
+       "start": "2025-10-18T15:00:00-04:00",
+       "end":   "2025-11-15T23:59:59-05:00",
+       "duration": "PT2H"
+     }
+     ```
+
+2. **Range on same day**
+
+   * Input:
+
+     ```json
+     {
+       "start_text": "October 24, 2025 02:00 pm",
+       "end_text":   "October 24, 2025 04:00 pm",
+       "duration":   "30m"
+     }
+     ```
+   * Output:
+
+     ```json
+     {
+       "start": "2025-10-24T14:00:00-04:00",
+       "end":   "2025-10-24T16:00:00-04:00",
+       "duration": "PT30M"
+     }
+     ```
+
+3. **Start-only case (from upstream)**
+
+   * Input:
+
+     ```json
+     {
+       "start_text": "October 19, 2025 09:00 am",
+       "end_text":   "October 19, 2025 11:59 pm",
+       "duration":   null
+     }
+     ```
+   * Output:
+
+     ```json
+     {
+       "start": "2025-10-19T09:00:00-04:00",
+       "end":   "2025-10-19T23:59:59-04:00",
+       "duration": null
+     }
+     ```
+
+4. **Bad ordering repaired**
+
+   * Input:
+
+     ```json
+     {
+       "start_text": "October 24, 2025 08:00 pm",
+       "end_text":   "October 24, 2025 06:00 pm",
+       "duration":   null
+     }
+     ```
+   * Output:
+
+     ```json
+     {
+       "start": "2025-10-24T20:00:00-04:00",
+       "end":   "2025-10-24T23:59:59-04:00",
+       "duration": null
+     }
+     ```
+
+     *(end snapped to end_of_day(start) per invariant)*
+
+5. **Decimal hours**
+
+   * Input:
+
+     ```json
+     {
+       "start_text": "October 20, 2025 09:00 am",
+       "end_text":   "October 20, 2025 11:59 pm",
+       "duration":   "1.5h"
+     }
+     ```
+   * Output:
+
+     ```json
+     {
+       "start": "2025-10-20T09:00:00-04:00",
+       "end":   "2025-10-20T23:59:59-04:00",
+       "duration": "PT1H30M"
+     }
+     ```
+
+---
+
+## Logging (recommended)
+
+* Log the raw inputs, parsed datetimes, applied timezone/offsets, any repairs (`end < start`), and the duration normalization decision. This helps trace issues without guessing upstream intent.
+
+---
+
+**TL;DR**
+Time Standardizer takes **absolute text → ISO datetimes** (with correct TZ/DST) and **duration → ISO-8601**. It enforces `start ≤ end`, assigns seconds (`:59` only for EOD), and never reinterprets semantics already decided upstream.

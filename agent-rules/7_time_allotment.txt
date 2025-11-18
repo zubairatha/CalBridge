@@ -1,0 +1,220 @@
+# Time Allotment Agent (TA) — Spec (Scheduler = Optimizer)
+
+## Purpose
+
+Assign concrete calendar **slots** by delegating placement to the **`task_scheduler` optimizer**. TA:
+
+* builds constraints from `TS`, `TD/LD`, and CalBridge free/busy,
+* calls the optimizer (no custom heuristics in TA),
+* validates results (bounds, non-overlap, durations),
+* emits final payloads with IDs/parent links.
+
+## Inputs
+
+* **CalBridge**: free/busy for the target `calendar` id across `[TS.start, TS.end]`.
+* **TS.output**
+
+  ```json
+  {"start":"<ISO>", "end":"<ISO>", "duration":"PT..." | null}
+  ```
+* **TD.output** (simple)
+
+  ```json
+  {"calendar":"<id>","type":"simple","title":"<string>","duration":"PT..." | null}
+  ```
+* **LD.output** (complex)
+
+  ```json
+  {"calendar":"<id>","type":"complex","title":"<string>","subtasks":[{"title":"<string>","duration":"PT..."}]}
+  ```
+* **task_scheduler**: exposes an **optimization API** (read its docs/files). TA must **not** reimplement scheduling.
+
+## Outputs
+
+### SIMPLE
+
+```json
+{
+  "calendar": "<id>",
+  "type": "simple",
+  "title": "<string>",
+  "slot": ["<ISO start>", "<ISO end>"],
+  "id": "<uuid4>",
+  "parent_id": null
+}
+```
+
+### COMPLEX
+
+```json
+{
+  "calendar": "<id>",
+  "type": "complex",
+  "title": "<string>",
+  "id": "<uuid4>",
+  "parent_id": null,
+  "subtasks": [
+    {
+      "title": "<string>",
+      "slot": ["<ISO start>", "<ISO end>"],
+      "parent_id": "<parent id>",
+      "id": "<uuid4>"
+    }
+  ]
+}
+```
+
+---
+
+## Core Policies
+
+1. **Delegate optimization**
+
+   * TA **does not** choose slots. TA **packages constraints** and calls `task_scheduler.optimize(...)` (or equivalent) for a solution.
+
+2. **Window bound**
+
+   * All placements must lie within `[TS.start, TS.end]` (inclusive start, exclusive or inclusive end per scheduler contract—be consistent). TA rejects solutions outside.
+
+3. **Calendar truth**
+
+   * Use CalBridge busy events as **hard constraints** (unavailable). TA provides free/busy to the optimizer; the optimizer must honor them.
+
+4. **No splitting**
+
+   * Each (sub)task must be assigned to **one contiguous slot** of its required duration.
+
+5. **IDs & parent links**
+
+   * Generate `uuid4` for each task/subtask. Parent `parent_id=null`; child `parent_id=parent.id`.
+
+---
+
+## What TA must pass to the optimizer
+
+### Common constraint envelope
+
+* **Horizon**: `window_start = TS.start`, `window_end = TS.end`.
+* **Busy intervals**: from CalBridge for the `calendar`, covering `[window_start, window_end]`.
+* **Tasks**: list with
+
+  * `task_id` (temp internal id),
+  * `duration` (ISO-8601),
+  * **contiguity = true**,
+  * **no_split = true**,
+  * optional **labels** (see preferences below),
+  * for complex: **precedence** (task i must start ≥ end of task i−1).
+* **Objective/Preferences** (only as hints; optimizer decides):
+
+  * `calendar_type`: “Work”/“Home” (from TD)
+  * `prefer_business_hours` for Work (e.g., 09:00–18:00 local)
+  * `avoid_night_hours` for both unless overtly personal
+  * `respect_sequence = true` (complex)
+  * `min_gap_between_subtasks = PT0M or PT5M` (set according to scheduler capability)
+  * `compactness_preference = high` (helps cluster subtasks close in time)
+  * `earliness_bias = medium` (prefer earlier feasible times within the window)
+
+> TA must **read `task_scheduler` docs/code** to map these to the scheduler’s native constraint fields (names may differ). If a field isn’t supported, omit it.
+
+### SIMPLE: task list
+
+* One task with duration:
+
+  * `TS.duration` if present, else **DEFAULT_SIMPLE_DURATION = PT30M**.
+
+### COMPLEX: task list
+
+* K tasks (2..5) from `LD.subtasks`, in the given order.
+* Add a **precedence chain**: `t1 → t2 → … → tK`.
+* Durations come **exactly** from LD (≤ PT3H).
+
+---
+
+## Validation of optimizer output (TA responsibility)
+
+For each returned slot:
+
+* **Bounds**: `TS.start ≤ slot_start < slot_end ≤ TS.end`.
+* **Duration match**: `slot_end - slot_start` equals required duration (to the minute).
+* **Busy compliance**: no overlap with CalBridge busy intervals.
+* **Non-overlap**: no overlap among subtasks (complex).
+* **Order**: complex subtasks respect precedence (each starts ≥ prior ends).
+* **Timezone**: all times are ISO with numeric offset and consistent timezone.
+
+If any check fails → **reject solution** and surface a **scheduling failure** describing the violated constraint(s). Do not silently “fix” optimizer output.
+
+---
+
+## Failure Handling
+
+* If the optimizer returns **no solution** or TA rejects the solution:
+
+  * Return a **scheduling error** with a concise reason:
+
+    * “no free slot fits required duration within window” (simple)
+    * “subtask N could not be placed before window end” (complex)
+  * Do **not** resize durations or split tasks here.
+
+---
+
+## Free/Busy Handling
+
+* Query CalBridge for the exact `calendar` and the full `[TS.start, TS.end]` date span (may cover multiple days).
+* Normalize recurring/all-day events into busy intervals as required by the optimizer.
+* If CalBridge exposes **holidays** and your product treats them as busy, include them as busy.
+
+---
+
+## Time & TZ
+
+* Use the same timezone as `TS.start/end`.
+* Honor DST per date. Optimizer should output ISO with correct offsets.
+
+---
+
+## Preferences (optional hints to pass if supported)
+
+* **Work calendar**: prefer **09:00–18:00** weekdays, compact clusters, earlier-in-window placement.
+* **Home calendar**: prefer **17:00–21:00** weekdays or **10:00–18:00** weekends; avoid late-night (after 22:00).
+* **Compactness**: minimize gaps between complex subtasks.
+* **Stability**: prefer not to schedule in the past relative to `NOW`, if `TS.start` is in the past (depends on product policy).
+
+> These are **hints** only. The optimizer may weigh them; TA just passes them.
+
+---
+
+## Example Flow (concise)
+
+**Simple**
+
+1. Build envelope (window, busy, one task with `PT20M` or default).
+2. Call optimizer → get a single slot.
+3. Validate; emit final JSON with `id` and `parent_id=null`.
+
+**Complex**
+
+1. Build envelope (window, busy, K tasks with durations, precedence chain).
+2. Call optimizer → get K slots.
+3. Validate bounds/order/non-overlap; assign `id`s; set each `parent_id` to the parent.
+
+---
+
+## Defaults & Edges
+
+* **DEFAULT_SIMPLE_DURATION** = `PT30M` when `TS.duration == null`.
+* **Min granularity** aligns with scheduler’s minute resolution (e.g., 5 or 15 min).
+* **All-or-nothing** for complex by default (either all subtasks placed or failure), unless your product chooses partial placement (define a flag if needed).
+
+---
+
+## Output Examples (same as previous spec)
+
+*(omitted here for brevity; structure unchanged)*
+
+---
+
+**TL;DR**
+
+* TA **does not pick times**; it **packages constraints** and calls your **optimizer** (`task_scheduler`).
+* It **validates** the returned plan strictly against `[TS.start, TS.end]`, busy, durations, order, and overlap.
+* It **emits IDs/links** and clean JSON—or a clear failure reason if no valid plan exists.
