@@ -1,0 +1,102 @@
+(.venv) zubair@Zubairs-MacBook-Air calendar-test % python agents/app.py "Call dentist tomorrow at 10am for 45 minutes"
+
+================================================================================
+🚀 STREAMLINED AGENTS - FULL PIPELINE
+================================================================================
+📝 Query: Call dentist tomorrow at 10am for 45 minutes
+🌍 Timezone: America/New_York
+🕐 Started: 2025-11-18 01:03:40
+
+================================================================================
+STEP 1: User Query Handler (UQ)
+================================================================================
+✅ Query validated
+  Result:
+    • query: Call dentist tomorrow at 10am for 45 minutes
+    • timezone: America/New_York
+
+================================================================================
+STEP 2: Slot Extractor (SE)
+================================================================================
+✅ Time slots extracted
+  Result:
+    • start_text: tomorrow at 10am
+    • duration: 45 minutes
+
+================================================================================
+STEP 3: Absolute Resolver (AR)
+================================================================================
+✅ Absolute times resolved
+  Result:
+    • start_text: November 19, 2025 10:00 am
+    • end_text: November 19, 2025 11:59 pm
+    • duration: 45 minutes
+
+================================================================================
+STEP 4: Time Standardizer (TS)
+================================================================================
+🔄 Time Standardizer: Processing AR output
+   • Start: November 19, 2025 10:00 am
+   • End: November 19, 2025 11:59 pm
+   • Duration: 45 minutes
+   • Timezone: America/New_York
+   • Parsed start: 2025-11-19 10:00:00
+   • Parsed end: 2025-11-19 23:59:00
+   • With timezone: 2025-11-19 10:00:00-05:00 -> 2025-11-19 23:59:00-05:00
+   • With seconds: 2025-11-19 10:00:00-05:00 -> 2025-11-19 23:59:59-05:00
+   • ISO start: 2025-11-19T10:00:00-05:00
+   • ISO end: 2025-11-19T23:59:59-05:00
+   • Duration ISO: PT45M
+✅ Times standardized to ISO format
+  Result:
+    • start: 2025-11-19T10:00:00-05:00
+    • end: 2025-11-19T23:59:59-05:00
+    • duration: PT45M
+
+================================================================================
+STEP 5: Task Difficulty Analyzer (TD)
+================================================================================
+✅ Task classified
+  Result:
+    • calendar: E198547B-614F-4109-B61A-96C56D4DED8A
+    • type: simple
+    • title: Call dentist
+    • duration: PT45M
+  📊 Task Type: SIMPLE
+  📅 Calendar: E198547B-614F-4109-B61A-96C56D4DED8A
+  📝 Title: Call dentist
+
+================================================================================
+STEP 6: LLM Decomposer (LD)
+================================================================================
+ℹ️  Skipped (simple task)
+
+================================================================================
+STEP 7: Time Allotment Agent (TA)
+================================================================================
+✅ Simple task scheduled
+  🆔 Task ID: 6b23da51-01fe-428a-bea4-8274d404e7d5
+  ⏰ Slot: 2025-11-19T10:00:00-05:00 → 2025-11-19T10:45:00-05:00
+
+================================================================================
+STEP 8: Event Creator Agent (EC)
+================================================================================
+✅ Simple task event created
+  🆔 Task ID: 6b23da51-01fe-428a-bea4-8274d404e7d5
+  📅 Calendar Event ID: 4F727578-102E-4B4E-B057-C168E5CBB905
+
+================================================================================
+📊 PIPELINE SUMMARY
+================================================================================
+✅ UQ: User Query Handler
+✅ SE: Slot Extractor
+✅ AR: Absolute Resolver
+✅ TS: Time Standardizer
+✅ TD: Task Difficulty Analyzer
+⚠️  LD: LLM Decomposer (skipped or failed)
+✅ TA: Time Allotment Agent
+✅ EC: Event Creator Agent
+
+🎉 SUCCESS: Calendar events created!
+   📅 Event ID: 4F727578-102E-4B4E-B057-C168E5CBB905
+================================================================================

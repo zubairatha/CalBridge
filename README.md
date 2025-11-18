@@ -159,6 +159,8 @@ source .venv/bin/activate
 python agents/app.py "Call mom tomorrow at 2pm for 30 minutes"
 ```
 
+> 📖 **See [examples/README.md](examples/README.md) for complete examples with screenshots showing the full pipeline flow for both simple and complex tasks.**
+
 ### Pipeline Flow
 
 The agents system processes queries through 8 stages:

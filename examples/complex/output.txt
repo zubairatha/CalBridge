@@ -1,0 +1,125 @@
+(.venv) zubair@Zubairs-MacBook-Air calendar-test % python agents/app.py "Plan a 5-day Japan trip by Nov 25"
+
+================================================================================
+🚀 STREAMLINED AGENTS - FULL PIPELINE
+================================================================================
+📝 Query: Plan a 5-day Japan trip by Nov 25
+🌍 Timezone: America/New_York
+🕐 Started: 2025-11-18 01:07:58
+
+================================================================================
+STEP 1: User Query Handler (UQ)
+================================================================================
+✅ Query validated
+  Result:
+    • query: Plan a 5-day Japan trip by Nov 25
+    • timezone: America/New_York
+
+================================================================================
+STEP 2: Slot Extractor (SE)
+================================================================================
+✅ Time slots extracted
+  Result:
+    • end_text: Nov 25
+    • duration: None
+
+================================================================================
+STEP 3: Absolute Resolver (AR)
+================================================================================
+✅ Absolute times resolved
+  Result:
+    • start_text: November 18, 2025 12:08 am
+    • end_text: November 25, 2025 11:59 pm
+    • duration: None
+
+================================================================================
+STEP 4: Time Standardizer (TS)
+================================================================================
+🔄 Time Standardizer: Processing AR output
+   • Start: November 18, 2025 12:08 am
+   • End: November 25, 2025 11:59 pm
+   • Duration: None
+   • Timezone: America/New_York
+   • Parsed start: 2025-11-18 00:08:00
+   • Parsed end: 2025-11-25 23:59:00
+   • With timezone: 2025-11-18 00:08:00-05:00 -> 2025-11-25 23:59:00-05:00
+   • With seconds: 2025-11-18 00:08:00-05:00 -> 2025-11-25 23:59:59-05:00
+   • ⚠️  start < now → set start = now
+   • ISO start: 2025-11-18T01:08:55.959346-05:00
+   • ISO end: 2025-11-25T23:59:59-05:00
+   • Duration ISO: None
+✅ Times standardized to ISO format
+  Result:
+    • start: 2025-11-18T01:08:55.959346-05:00
+    • end: 2025-11-25T23:59:59-05:00
+
+================================================================================
+STEP 5: Task Difficulty Analyzer (TD)
+================================================================================
+✅ Task classified
+  Result:
+    • calendar: E198547B-614F-4109-B61A-96C56D4DED8A
+    • type: complex
+    • title: Plan Japan trip
+  📊 Task Type: COMPLEX
+  📅 Calendar: E198547B-614F-4109-B61A-96C56D4DED8A
+  📝 Title: Plan Japan trip
+
+================================================================================
+STEP 6: LLM Decomposer (LD)
+================================================================================
+✅ Task decomposed into 5 subtasks
+  📋 Subtasks:
+     1. List must-see cities and dates (Japan trip) (PT1H)
+     2. Compare flights and book (Japan trip) (PT2H)
+     3. Draft day-by-day itinerary (Japan trip) (PT1H30M)
+     4. Book lodging and passes (Japan trip) (PT2H)
+     5. Finalize budget and checklist (Japan trip) (PT45M)
+
+================================================================================
+STEP 7: Time Allotment Agent (TA)
+================================================================================
+✅ Complex task scheduled with 5 subtasks
+  🆔 Parent ID: f5dd38ab-8e3f-44ae-9e13-c31157fcf2d6
+  📋 Subtasks:
+     1. List must-see cities and dates (Japan trip)
+        Slot: 2025-11-18T06:00:00-05:00 → 2025-11-18T07:00:00-05:00
+        ID: 0c9bb866-fc7b-451f-8821-a1e512bbbe29
+     2. Compare flights and book (Japan trip)
+        Slot: 2025-11-20T06:00:00-05:00 → 2025-11-20T08:00:00-05:00
+        ID: 9f7bcb4f-cab5-4708-9e80-515d95e5bbeb
+     3. Draft day-by-day itinerary (Japan trip)
+        Slot: 2025-11-22T06:00:00-05:00 → 2025-11-22T07:30:00-05:00
+        ID: 6dab8acd-1dc2-41c1-8147-11180659fd17
+     4. Book lodging and passes (Japan trip)
+        Slot: 2025-11-23T06:00:00-05:00 → 2025-11-23T08:00:00-05:00
+        ID: 1d91e519-5c12-4fb3-bc6b-c15157dfd6b9
+     5. Finalize budget and checklist (Japan trip)
+        Slot: 2025-11-25T06:00:00-05:00 → 2025-11-25T06:45:00-05:00
+        ID: 75a665e1-c710-4c42-96ea-9ba9798781f4
+
+================================================================================
+STEP 8: Event Creator Agent (EC)
+================================================================================
+✅ Created 5 subtask events
+  📅 Task 0c9bb866-fc7b-451f-8821-a1e512bbbe29: Event 74DCC0CF-385F-444D-88B3-E5C5EC5725A3
+  📅 Task 9f7bcb4f-cab5-4708-9e80-515d95e5bbeb: Event A22E71D5-5509-4FCB-813F-A506BD813A2B
+  📅 Task 6dab8acd-1dc2-41c1-8147-11180659fd17: Event 0AF4D5B4-6FEF-4BF0-995F-42AC776CBC66
+  📅 Task 1d91e519-5c12-4fb3-bc6b-c15157dfd6b9: Event 6BF10203-585B-4589-A845-FB4EAC979AE8
+  📅 Task 75a665e1-c710-4c42-96ea-9ba9798781f4: Event D3E59C3B-E5C8-4A22-A453-F773E9624793
+
+================================================================================
+📊 PIPELINE SUMMARY
+================================================================================
+✅ UQ: User Query Handler
+✅ SE: Slot Extractor
+✅ AR: Absolute Resolver
+✅ TS: Time Standardizer
+✅ TD: Task Difficulty Analyzer
+✅ LD: LLM Decomposer
+✅ TA: Time Allotment Agent
+✅ EC: Event Creator Agent
+
+🎉 SUCCESS: Calendar events created!
+   📅 Created 5 events
+================================================================================
