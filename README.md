@@ -63,11 +63,7 @@ python -m pip install --upgrade pip
 Install dependencies:
 
 ```bash
-# Core CalBridge dependencies
-pip install pyobjc fastapi uvicorn py2app pydantic anyio sniffio h11
-
-# Agents dependencies
-pip install -r agents/requirements.txt
+pip install -r requirements.txt
 ```
 
 ---
