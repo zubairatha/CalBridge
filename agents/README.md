@@ -79,15 +79,15 @@ Each agent has a clearly defined contract. Detailed prompts/rules live in `agent
 
 ```mermaid
 flowchart LR
-    UQ[UQ\nInput: raw query\nOutput: normalized query + timezone] --> SE[SE\nInput: query\nOutput: start/end/duration text]
-    SE --> AR[AR\nInput: SE text + context\nOutput: absolute times]
-    AR --> TS[TS\nInput: AR output\nOutput: ISO start/end/duration]
-    TS --> TD[TD\nInput: query + TS + calendars\nOutput: type, calendar, title]
-    TD -->|simple| TA[TA\nInput: TS + TD\nOutput: scheduled slot(s)]
-    TD -->|complex| LD[LD\nInput: TD complex\nOutput: subtasks]
+    UQ["UQ<br/>Input: raw query<br/>Output: normalized query + timezone"] --> SE["SE<br/>Input: query<br/>Output: start/end/duration text"]
+    SE --> AR["AR<br/>Input: SE text + context<br/>Output: absolute times"]
+    AR --> TS["TS<br/>Input: AR output<br/>Output: ISO start/end/duration"]
+    TS --> TD["TD<br/>Input: query + TS + calendars<br/>Output: task type, calendar, title"]
+    TD -->|simple| TA["TA<br/>Input: TS + TD<br/>Output: scheduled slots"]
+    TD -->|complex| LD["LD<br/>Input: TD complex<br/>Output: subtasks"]
     LD --> TA
-    TA --> EC[EC\nInput: TA schedule\nOutput: CalBridge events + DB entries]
-    EC --> Done([Calendar updated + SQLite synced])
+    TA --> EC["EC<br/>Input: TA schedule<br/>Output: CalBridge events + DB entries"]
+    EC --> Done(["Calendar updated<br/>SQLite synced"])
 ```
 
 ### How It Works
