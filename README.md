@@ -1,6 +1,6 @@
 # CalBridge — Intelligent Calendar Assistant
 
-**CalBridge** is a powerful macOS application that bridges the gap between natural language task planning and your Apple Calendar. It combines a local HTTP API for calendar access with an intelligent **multi-agent system** that understands your tasks and automatically schedules them into your calendar.
+**CalBridge** is a tool that enables programmatic access to macOS Calendar, bridging the gap between natural language task planning and your Apple Calendar. It combines a local HTTP API for calendar access with an intelligent **multi-agent system** that understands your tasks and automatically schedules them into your calendar.
 
 ## What CalBridge Does
 
