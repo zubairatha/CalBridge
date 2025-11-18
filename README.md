@@ -172,6 +172,35 @@ The agents system processes queries through 8 stages:
 7. **TA (Time Allotment Agent)**: Schedules tasks into available calendar slots using optimization algorithm
 8. **EC (Event Creator Agent)**: Creates calendar events via CalBridge API and tracks them in SQLite database
 
+#### Pipeline Flowchart
+
+```mermaid
+flowchart TD
+    Start([User Query<br/>Natural Language]) --> UQ[UQ: User Query Handler<br/>Validate Input & Timezone]
+    UQ --> SE[SE: Slot Extractor<br/>Extract Time Expressions<br/>LLM-based]
+    SE --> AR[AR: Absolute Resolver<br/>Resolve to Absolute Times<br/>LLM-based]
+    AR --> TS[TS: Time Standardizer<br/>Convert to ISO-8601<br/>Rule-based]
+    TS --> TD[TD: Task Difficulty Analyzer<br/>Classify & Assign Calendar<br/>LLM-based]
+    TD --> Decision{Task Type?}
+    Decision -->|Simple| TA[TA: Time Allotment Agent<br/>Schedule Task<br/>Uses CalBridge API<br/>for Free/Busy Slots]
+    Decision -->|Complex| LD[LD: LLM Decomposer<br/>Break into Subtasks<br/>LLM-based]
+    LD --> TA
+    TA --> EC[EC: Event Creator Agent<br/>Create Events via CalBridge API<br/>Track in SQLite Database]
+    EC --> CalBridge[CalBridge API<br/>Apple Calendar Integration]
+    CalBridge --> End([Calendar Events Created])
+    
+    style UQ fill:#e1f5ff
+    style SE fill:#fff4e1
+    style AR fill:#fff4e1
+    style TS fill:#e8f5e9
+    style TD fill:#fff4e1
+    style LD fill:#fff4e1
+    style TA fill:#f3e5f5
+    style EC fill:#f3e5f5
+    style Decision fill:#ffe0b2
+    style CalBridge fill:#ffebee
+```
+
 ### Example: Simple Task
 
 **Input:**
