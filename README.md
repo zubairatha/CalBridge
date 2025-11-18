@@ -345,6 +345,31 @@ python agents/app.py --delete-all
 
 For more details, see [agents/README.md](agents/README.md) and [agents/QUICK_START.md](agents/QUICK_START.md).
 
+### Task Scheduling Strategy
+
+The Time Allotment Agent (TA) uses an **ordered even-spread scheduling algorithm** to intelligently place tasks into available calendar slots. The strategy balances multiple objectives:
+
+**Key Features:**
+
+- **Even Distribution**: Tasks are spread evenly across available days to avoid clustering
+- **Order Preservation**: Maintains the original task order (important for complex tasks with dependencies)
+- **Anti-Bunching**: Prefers days with fewer scheduled tasks to prevent overload
+- **Constraint-Aware**: Respects work windows (6 AM–11 PM), blackouts, minimum gaps, and maximum tasks per day
+- **Greedy Heuristic**: Fast, practical algorithm that produces human-sensible schedules
+
+**How It Works:**
+
+1. **Availability Normalization**: Fetches free/busy slots from CalBridge API, splits at midnight, and clips to work window
+2. **Feasibility Check**: Verifies total available time meets task requirements before scheduling
+3. **Even-Spread Targets**: Computes target day indices to distribute tasks uniformly across available days
+4. **Greedy Placement**: For each task (in order):
+   - Ranks days by proximity to target index and current task load
+   - Selects the earliest feasible time slot on the chosen day
+   - Applies cooldown gaps and respects daily limits
+5. **Validation**: Ensures all tasks are placed before deadline with clear error messages if infeasible
+
+This approach ensures tasks are scheduled efficiently while respecting calendar constraints and maintaining a balanced workload distribution.
+
 ---
 
 ## Technical Stack

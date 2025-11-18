@@ -1,201 +1,62 @@
-# Streamlined Agents
+# Agents System
 
-A LangGraph-based agent system for processing natural language queries and extracting time-related information.
+A multi-agent system that processes natural language queries through an 8-stage pipeline to automatically schedule tasks in your calendar.
 
-## Components Implemented
+## Overview
 
-### 1. User Query (UQ)
-- **File**: `user_query.py`
-- **Purpose**: Simple input handler for user queries with timezone management
-- **Features**: Input validation, timezone support, clean data models
+The agents system transforms natural language like "Call mom tomorrow at 2pm" into scheduled calendar events. It uses a combination of LLM-based agents and rule-based processors to understand, classify, and schedule tasks.
 
-### 2. Slot Extractor (SE)
-- **File**: `slot_extractor.py`
-- **Purpose**: LLM-based extraction of start, end, duration from user queries
-- **Features**: Extracts raw time information using Ollama (llama3), robust error handling
+## Quick Start
 
-### 3. Absolute Resolver (AR)
-- **File**: `absolute_resolver.py`
-- **Purpose**: LLM-based resolution of time slots to absolute dates/times
-- **Features**: Converts relative time expressions to absolute datetime strings
-
-### 4. Time Standardizer (TS)
-- **File**: `time_standardizer.py`
-- **Purpose**: Convert Absolute Resolver output to ISO formats
-- **Features**: Regex-based parsing, timezone handling, duration normalization, invariant enforcement
-
-### 5. Task Difficulty Analyzer (TD)
-- **File**: `task_difficulty_analyzer.py`
-- **Purpose**: LLM-based classification of tasks and calendar assignment
-- **Features**: Classifies tasks as simple/complex, assigns Work/Home calendar via CalBridge API, generates short imperative titles, preserves duration unchanged
-
-### 6. LLM Decomposer (LD)
-- **File**: `llm_decomposer.py`
-- **Purpose**: Decomposes complex tasks into 2-5 schedulable subtasks
-- **Features**: LLM-based decomposition with ISO-8601 durations (≤ PT3H), validation and constraint enforcement, post-processing merges TD metadata
-
-### 7. Time Allotment Agent (TA)
-- **File**: `time_allotment_agent.py`
-- **Purpose**: Schedules tasks into calendar slots using task_scheduler
-- **Features**: Fetches free/busy slots from CalBridge API, optimally schedules tasks/subtasks, validates scheduled slots, generates IDs
-
-### 8. Event Creator Agent (EC)
-- **File**: `event_creator_agent.py`
-- **Purpose**: Creates and manages calendar events via CalBridge API
-- **Features**: Creates calendar events, stores task metadata in SQLite database, handles deletion (by ID, parent ID, or all events), maintains event_map for tracking calendar events
-
-## Testing
-
-### Full Pipeline Test (UQ → SE → AR → TS)
 ```bash
-cd /Users/zubair/Desktop/Dev/calendar-test && source .venv/bin/activate && python agents/test/test_full_pipeline_with_ts.py "your query here"
+# From project root
+source .venv/bin/activate
+python agents/app.py "Call mom tomorrow at 2pm for 30 minutes"
 ```
 
-### Full Pipeline Test with TD (UQ → SE → AR → TS → TD)
+For more examples and usage, see [QUICK_START.md](QUICK_START.md) and [APP_README.md](APP_README.md).
+
+## Pipeline Components
+
+The system consists of 8 specialized agents working together:
+
+| Agent | Purpose | Type |
+|-------|---------|------|
+| **UQ** - User Query Handler | Validates input and sets timezone | Rule-based |
+| **SE** - Slot Extractor | Extracts time expressions from natural language | LLM-based |
+| **AR** - Absolute Resolver | Resolves relative time to absolute dates/times | LLM-based |
+| **TS** - Time Standardizer | Converts to ISO-8601 format | Rule-based |
+| **TD** - Task Difficulty Analyzer | Classifies task (simple/complex) and assigns calendar | LLM-based |
+| **LD** - LLM Decomposer | Decomposes complex tasks into 2-5 subtasks | LLM-based |
+| **TA** - Time Allotment Agent | Schedules tasks into available calendar slots | Optimization |
+| **EC** - Event Creator Agent | Creates calendar events via CalBridge API | API Integration |
+
+### How It Works
+
+1. **UQ** validates your query and sets the timezone
+2. **SE** extracts time expressions ("tomorrow at 2pm", "30 minutes")
+3. **AR** resolves relative times to absolute dates ("October 14, 2025 2:00 PM")
+4. **TS** standardizes to ISO-8601 format
+5. **TD** classifies the task as simple or complex and assigns Work/Home calendar
+6. **LD** (if complex) breaks down into manageable subtasks
+7. **TA** schedules tasks into available calendar slots using CalBridge API
+8. **EC** creates calendar events and tracks them in SQLite database
+
+## Usage
+
+### Basic Usage
+
 ```bash
-cd /Users/zubair/Desktop/Dev/calendar-test && source .venv/bin/activate && python agents/test/test_full_pipeline_with_td.py "your query here"
+python agents/app.py "Your natural language query"
 ```
 
-### Full Pipeline Test with LD (UQ → SE → AR → TS → TD → LD)
+### Interactive Mode
+
 ```bash
-cd /Users/zubair/Desktop/Dev/calendar-test && source .venv/bin/activate && python agents/test/test_full_pipeline_with_ld.py "your query here"
+python agents/app.py --interactive
 ```
 
-### Interactive Pipeline Mode
-```bash
-cd /Users/zubair/Desktop/Dev/calendar-test && source .venv/bin/activate && python agents/test/test_full_pipeline_with_ts.py --interactive
-```
-
-### Test Multiple Examples
-```bash
-cd /Users/zubair/Desktop/Dev/calendar-test && source .venv/bin/activate && python agents/test/test_full_pipeline_with_ts.py --multiple
-```
-
-### Test Specific Scenarios
-```bash
-cd /Users/zubair/Desktop/Dev/calendar-test && source .venv/bin/activate && python agents/test/test_full_pipeline_with_ts.py --scenarios
-```
-
-### Test Individual Components
-
-#### Slot Extractor Only
-```bash
-cd /Users/zubair/Desktop/Dev/calendar-test && source .venv/bin/activate && python agents/test/test_slot_extractor.py "your query here"
-```
-
-#### Absolute Resolver Only
-```bash
-cd /Users/zubair/Desktop/Dev/calendar-test && source .venv/bin/activate && python agents/test/test_absolute_resolver.py --test
-```
-
-#### Time Standardizer Only
-```bash
-cd /Users/zubair/Desktop/Dev/calendar-test && source .venv/bin/activate && python agents/test/test_time_standardizer.py --test
-```
-
-#### Time Standardizer Edge Cases
-```bash
-cd /Users/zubair/Desktop/Dev/calendar-test && source .venv/bin/activate && python agents/test/test_time_standardizer.py --edge
-```
-
-#### Time Standardizer Interactive
-```bash
-cd /Users/zubair/Desktop/Dev/calendar-test && source .venv/bin/activate && python agents/test/test_time_standardizer.py --interactive
-```
-
-#### Task Difficulty Analyzer
-```bash
-cd /Users/zubair/Desktop/Dev/calendar-test && source .venv/bin/activate && python agents/test/test_task_difficulty_analyzer.py --basic
-```
-
-#### Task Difficulty Analyzer - All Tests
-```bash
-cd /Users/zubair/Desktop/Dev/calendar-test && source .venv/bin/activate && python agents/test/test_task_difficulty_analyzer.py --all
-```
-
-#### Task Difficulty Analyzer - Interactive
-```bash
-cd /Users/zubair/Desktop/Dev/calendar-test && source .venv/bin/activate && python agents/test/test_task_difficulty_analyzer.py --interactive
-```
-
-#### Full Pipeline with TD - Multiple Examples
-```bash
-cd /Users/zubair/Desktop/Dev/calendar-test && source .venv/bin/activate && python agents/test/test_full_pipeline_with_td.py --multiple
-```
-
-#### Full Pipeline with TD - Interactive
-```bash
-cd /Users/zubair/Desktop/Dev/calendar-test && source .venv/bin/activate && python agents/test/test_full_pipeline_with_td.py --interactive
-```
-
-#### Full Pipeline with TD - Scenarios
-```bash
-cd /Users/zubair/Desktop/Dev/calendar-test && source .venv/bin/activate && python agents/test/test_full_pipeline_with_td.py --scenarios
-```
-
-#### LLM Decomposer
-```bash
-cd /Users/zubair/Desktop/Dev/calendar-test && source .venv/bin/activate && python agents/test/test_llm_decomposer.py --basic
-```
-
-#### LLM Decomposer - All Tests
-```bash
-cd /Users/zubair/Desktop/Dev/calendar-test && source .venv/bin/activate && python agents/test/test_llm_decomposer.py --all
-```
-
-#### LLM Decomposer - Interactive
-```bash
-cd /Users/zubair/Desktop/Dev/calendar-test && source .venv/bin/activate && python agents/test/test_llm_decomposer.py --interactive
-```
-
-#### Full Pipeline with LD - Multiple Examples
-```bash
-cd /Users/zubair/Desktop/Dev/calendar-test && source .venv/bin/activate && python agents/test/test_full_pipeline_with_ld.py --multiple
-```
-
-#### Full Pipeline with LD - Simple vs Complex
-```bash
-cd /Users/zubair/Desktop/Dev/calendar-test && source .venv/bin/activate && python agents/test/test_full_pipeline_with_ld.py --simple-vs-complex
-```
-
-#### Full Pipeline with LD - Interactive
-```bash
-cd /Users/zubair/Desktop/Dev/calendar-test && source .venv/bin/activate && python agents/test/test_full_pipeline_with_ld.py --interactive
-```
-
-## Configuration
-
-- **LLM**: Ollama with Qwen2.5:14b-instruct (temperature 0.7 for most agents, 0.2 for TD, 0.3 for LD)
-- **Timezone**: Default America/New_York (configurable)
-- **CalBridge API**: Default http://127.0.0.1:8765 (for calendar lookup)
-- **Output**: JSON format with time information and task classification
-
-## Requirements
-
-See `requirements.txt` for dependencies.
-
-## Pipeline Flow
-
-The complete pipeline includes:
-1. **UQ** → User Query Handler (input validation)
-2. **SE** → Slot Extractor (extract time information)
-3. **AR** → Absolute Resolver (resolve to absolute dates/times)
-4. **TS** → Time Standardizer (convert to ISO formats)
-5. **TD** → Task Difficulty Analyzer (classify task and assign calendar)
-6. **LD** → LLM Decomposer (decompose complex tasks into subtasks) - *only for complex tasks*
-7. **TA** → Time Allotment Agent (schedule tasks into calendar slots)
-8. **EC** → Event Creator Agent (create calendar events via CalBridge API)
-
-The Time Standardizer provides ISO format datetime strings, the Task Difficulty Analyzer provides calendar assignment and task classification, the LLM Decomposer breaks down complex tasks into manageable subtasks, the Time Allotment Agent schedules tasks into available calendar slots, and the Event Creator Agent creates calendar events and tracks them in a SQLite database.
-
-## Database Management
-
-The Event Creator Agent uses a SQLite database (`event_creator.db`) to track all tasks and calendar events:
-
-- **Tasks Table**: Stores task IDs, titles, and parent-child relationships
-- **Event Map Table**: Maps task IDs to calendar event IDs and calendar IDs
-
-### List Events
+### List All Events
 
 ```bash
 python agents/app.py --list
@@ -204,7 +65,7 @@ python agents/app.py --list
 ### Delete Events
 
 ```bash
-# Delete a task by ID (cascade if parent)
+# Delete a specific task
 python agents/app.py --delete <task_id>
 
 # Delete all children of a parent task
@@ -214,4 +75,37 @@ python agents/app.py --delete-parent <parent_id>
 python agents/app.py --delete-all
 ```
 
-**Note**: All delete operations remove events from both the calendar (via CalBridge API) and the database.
+## Configuration
+
+- **LLM**: Ollama with Qwen2.5:14b-instruct
+- **Timezone**: Default `America/New_York` (configurable via `--timezone`)
+- **CalBridge API**: Default `http://127.0.0.1:8765`
+- **Database**: SQLite (`event_creator.db`)
+
+## Database
+
+The Event Creator Agent uses SQLite to track tasks and calendar events:
+
+- **Tasks Table**: Task IDs, titles, and parent-child relationships
+- **Event Map Table**: Maps task IDs to calendar event IDs
+
+All delete operations remove events from both the calendar (via CalBridge) and the database.
+
+## Testing
+
+For development and testing, see the `test/` directory. Test files are organized by component and pipeline stage.
+
+**Note**: Most users should use `agents/app.py` directly. The test files are for development and debugging.
+
+## Requirements
+
+See `requirements.txt` for Python dependencies. Requires:
+- Python 3.11+
+- Ollama running locally
+- CalBridge API running (`http://127.0.0.1:8765`)
+
+## Documentation
+
+- **[QUICK_START.md](QUICK_START.md)**: Quick examples and common use cases
+- **[APP_README.md](APP_README.md)**: Complete CLI reference and detailed examples
+- **[Time_Allotment/README.md](Time_Allotment/README.md)**: Time Allotment Agent details
