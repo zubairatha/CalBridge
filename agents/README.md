@@ -31,6 +31,65 @@ The system consists of 8 specialized agents working together:
 | **TA** - Time Allotment Agent | Schedules tasks into available calendar slots | Optimization |
 | **EC** - Event Creator Agent | Creates calendar events via CalBridge API | API Integration |
 
+## Agent Details (Inputs & Outputs)
+
+Each agent has a clearly defined contract. Detailed prompts/rules live in `agent-rules/`.
+
+### 1. UQ — User Query Handler (`user_query.py`)
+- **Input:** Raw natural language query, optional `--timezone`
+- **Output:** Normalized query string plus resolved timezone (IANA format)
+- **Notes:** Guards against empty queries and enforces basic validation
+
+### 2. SE — Slot Extractor (`slot_extractor.py`, rules: `agent-rules/2_slot_extractor.txt`)
+- **Input:** Normalized query + timezone from UQ
+- **Output:** `start_text`, `end_text`, `duration` strings (may be `null`)
+- **Notes:** LLM (Ollama/Qwen2.5:14b) extracts raw time expressions without anchoring
+
+### 3. AR — Absolute Resolver (`absolute_resolver.py`, rules: `agent-rules/3_absolute_resolver*.txt`)
+- **Input:** Slot Extractor output + contextual timestamps (`NOW_ISO`, day/week/month helpers)
+- **Output:** Absolute `start_text`, `end_text`, `duration` in canonical human-readable format
+- **Notes:** Converts relative phrases (“next Tuesday”) into concrete datetimes
+
+### 4. TS — Time Standardizer (`time_standardizer.py`)
+- **Input:** Absolute Resolver output
+- **Output:** ISO-8601 `start`, `end`, `duration`
+- **Notes:** Rule-based parser that enforces timezone awareness and duration sanity checks
+
+### 5. TD — Task Difficulty Analyzer (`task_difficulty_analyzer.py`, rules: `agent-rules/5_task_difficulty_analyzer.txt`)
+- **Input:** User query, TS output, calendar metadata from CalBridge
+- **Output:** Task classification (`simple`/`complex`), calendar assignment, cleaned title, preserved duration
+- **Notes:** Also decides whether LD should run
+
+### 6. LD — LLM Decomposer (`llm_decomposer.py`, rules: `agent-rules/6_llm_decomposer.txt`)
+- **Input:** TD output when `type=complex`
+- **Output:** 2–5 subtasks with titles, durations (≤ PT3H), and parent metadata
+- **Notes:** Ensures subtasks remain schedulable and inherit TD metadata
+
+### 7. TA — Time Allotment Agent (`time_allotment_agent.py`, rules: `agent-rules/7_time_allotment.txt`)
+- **Input:** TS window + TD (simple) or LD (complex) payload
+- **Output:** Scheduled tasks/subtasks with concrete time slots and UUIDs
+- **Notes:** Uses ordered even-spread scheduler + CalBridge free/busy data; enforces constraints (work window, min gaps, max tasks/day)
+
+### 8. EC — Event Creator Agent (`event_creator_agent.py`, rules: `agent-rules/8_event_creator.txt`)
+- **Input:** TA schedule plus CalBridge credentials
+- **Output:** Calendar events created via CalBridge API, persisted mappings in `event_creator.db`
+- **Notes:** Supports list/delete operations and keeps parent-child relationships synchronized
+
+## Agent Flowchart
+
+```mermaid
+flowchart LR
+    UQ[UQ\nInput: raw query\nOutput: normalized query + timezone] --> SE[SE\nInput: query\nOutput: start/end/duration text]
+    SE --> AR[AR\nInput: SE text + context\nOutput: absolute times]
+    AR --> TS[TS\nInput: AR output\nOutput: ISO start/end/duration]
+    TS --> TD[TD\nInput: query + TS + calendars\nOutput: type, calendar, title]
+    TD -->|simple| TA[TA\nInput: TS + TD\nOutput: scheduled slot(s)]
+    TD -->|complex| LD[LD\nInput: TD complex\nOutput: subtasks]
+    LD --> TA
+    TA --> EC[EC\nInput: TA schedule\nOutput: CalBridge events + DB entries]
+    EC --> Done([Calendar updated + SQLite synced])
+```
+
 ### How It Works
 
 1. **UQ** validates your query and sets the timezone

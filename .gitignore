@@ -121,4 +121,4 @@ test.py
 test.txt
 
 # DB files
-Streamlined_Agents/event_creator.db
+agents/event_creator.db
